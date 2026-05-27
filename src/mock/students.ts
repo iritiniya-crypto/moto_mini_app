@@ -1,0 +1,58 @@
+import type { Student, Skill } from './types'
+
+export const baseSkills: Skill[] = [
+  { id: 1, name: 'Овал', value: 70, note: 'ровнее газ' },
+  { id: 2, name: 'Восьмерка', value: 60, note: 'работать над входом' },
+  { id: 3, name: 'Змейка', value: 65, note: 'добавить скорость' },
+  { id: 4, name: 'Торможение', value: 64, note: 'добавить прогрессию переднего' },
+  { id: 5, name: 'Работа со сцеплением', value: 81, note: 'хороший контроль на малой скорости' },
+  { id: 6, name: 'Медленная езда', value: 76, note: 'меньше рывков' },
+  { id: 7, name: 'Развороты', value: 58, note: 'тренировать корпус и баланс' },
+  { id: 8, name: 'Взгляд в поворот', value: 72, note: 'лучше выходит на дуге' },
+  { id: 9, name: 'Движение в городе', value: 45, note: 'еще не начинали' },
+]
+
+export const students: Student[] = [
+  {
+    id: 1,
+    name: 'Алина Морозова',
+    status: 'базовый контроль мотоцикла',
+    level: 'Уверенный старт',
+    completedTrainingsCount: 8,
+    nextLesson: '28 мая, 18:30 · развороты и траектория',
+    avatar: 'АМ',
+    focus: 'держать взгляд выше и мягче работать сцеплением',
+    skills: [...baseSkills],
+    notes: 'держать взгляд выше и мягче работать сцеплением',
+    telegramUsername: '@alinamoro',
+    trainingHistory: [],
+  },
+  {
+    id: 2,
+    name: 'Илья Ковалев',
+    status: 'вход в поворот',
+    level: 'Средний',
+    completedTrainingsCount: 13,
+    nextLesson: '29 мая, 11:00 · торможение',
+    avatar: 'ИК',
+    focus: 'дозировать передний тормоз без зажима рук',
+    skills: [...baseSkills],
+    notes: 'дозировать передний тормоз без зажима рук',
+    telegramUsername: '@ilyakovalev',
+    trainingHistory: [],
+  },
+  {
+    id: 3,
+    name: 'Мария Данилова',
+    status: 'баланс и сцепление',
+    level: 'Новичок',
+    completedTrainingsCount: 4,
+    nextLesson: '30 мая, 16:00 · медленная езда',
+    avatar: 'МД',
+    focus: 'стабильная посадка и точка схватывания',
+    skills: [...baseSkills],
+    notes: 'стабильная посадка и точка схватывания',
+    telegramUsername: '@maria.dani',
+    trainingHistory: [],
+  },
+]
