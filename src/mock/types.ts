@@ -2,7 +2,14 @@ export type Skill = {
   id: number
   name: string
   value: number
-  note: string
+}
+
+export type PaymentStatus = 'оплачено' | 'не оплачено' | 'частично оплачено'
+
+export type TrainingPackage = {
+  total: number
+  completed: number
+  paymentStatus: PaymentStatus
 }
 
 export type Student = {
@@ -17,6 +24,7 @@ export type Student = {
   skills?: Skill[]
   trainingHistory?: TrainingHistory[]
   telegramUsername?: string
+  trainingPackage?: TrainingPackage
 }
 
 export type TrainingHistory = {

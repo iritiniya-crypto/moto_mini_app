@@ -32,6 +32,8 @@ export function useBookingStore() {
     if (slot) {
       Object.assign(slot, patch)
     }
+
+    return slot
   }
 
   function removeSlot(id: number) {
@@ -70,7 +72,7 @@ export function useBookingStore() {
   }
 
   function completeSlot(id: number) {
-    updateSlot(id, { status: 'completed' })
+    return updateSlot(id, { status: 'completed' })
   }
 
   function declineSlot(id: number) {

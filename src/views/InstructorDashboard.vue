@@ -113,6 +113,16 @@ function openCompleteTrainingDialog(training: BookingSlot & { student: string })
   completeTrainingDialogOpen.value = true
 }
 
+function handleTrainingCompleted() {
+  if (confirmedRequest.value?.id === trainingToComplete.value?.id) {
+    confirmedRequest.value = null
+  }
+
+  completeTrainingDialogOpen.value = false
+  trainingToComplete.value = null
+  studentForTraining.value = null
+}
+
 function openLocation(url: string) {
   window.open(url, '_blank')
 }
@@ -271,7 +281,7 @@ function openLocation(url: string) {
       :slot="trainingToComplete"
       :student="studentForTraining"
       @update:open="completeTrainingDialogOpen = $event"
-      @completed="completeTrainingDialogOpen = false"
+      @completed="handleTrainingCompleted"
     />
 
     <Dialog v-model:visible="confirmDialogOpen" modal header="Подтвердить запись" class="moto-dialog">

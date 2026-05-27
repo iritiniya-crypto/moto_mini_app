@@ -1089,6 +1089,20 @@ p {
   gap: 8px;
 }
 
+.package-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.package-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.package-payment-field {
+  grid-column: 1 / -1;
+}
+
 .skill-edit-row {
   display: flex;
   align-items: center;

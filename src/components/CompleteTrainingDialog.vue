@@ -27,6 +27,7 @@ const skillImprovements = ref<Record<string, string>>({})
 const improved = ref('')
 const nextFocus = ref('')
 const levelUpdate = ref<string | null>(null)
+const isSaving = ref(false)
 
 const improvementOptions = [
   'Без изменений',
@@ -45,6 +46,7 @@ watch(
       improved.value = ''
       nextFocus.value = ''
       levelUpdate.value = props.student.level || null
+      isSaving.value = false
     }
   },
   { immediate: true },
@@ -81,27 +83,41 @@ function initializeSkillImprovements() {
 }
 
 function saveReport() {
-  if (!props.slot || !props.student) return
+  if (!props.slot || !props.student || !isFormValid.value || isSaving.value) return
+
+  isSaving.value = true
 
   initializeSkillImprovements()
 
-  createTrainingReport({
-    studentId: props.student.id,
-    slotId: props.slot.id,
-    date: props.slot.date,
-    duration: props.slot.duration,
-    location: props.slot.finalLocation || 'Не указано',
-    trainedSkills: selectedSkills.value,
-    improved: improved.value,
-    nextFocus: nextFocus.value,
-    skillUpdates: skillImprovements.value,
-    levelUpdate: levelUpdate.value && levelUpdate.value !== props.student.level ? levelUpdate.value : undefined,
-  })
+  try {
+    const report = createTrainingReport({
+      studentId: props.student.id,
+      slotId: props.slot.id,
+      date: props.slot.date,
+      duration: props.slot.duration,
+      location: props.slot.finalLocation || 'Не указано',
+      trainedSkills: [...selectedSkills.value],
+      improved: improved.value.trim(),
+      nextFocus: nextFocus.value.trim(),
+      skillUpdates: { ...skillImprovements.value },
+      levelUpdate: levelUpdate.value && levelUpdate.value !== props.student.level ? levelUpdate.value : undefined,
+    })
 
-  completeSlot(props.slot.id)
+    if (!report) {
+      throw new Error('Не удалось сохранить отчет: ученик не найден')
+    }
 
-  emit('update:open', false)
-  emit('completed')
+    const completedSlot = completeSlot(props.slot.id)
+    if (!completedSlot) {
+      throw new Error('Не удалось завершить тренировку: слот не найден')
+    }
+
+    emit('update:open', false)
+    emit('completed')
+  } catch (error) {
+    console.error(error)
+    isSaving.value = false
+  }
 }
 
 const isFormValid = computed(() => {
@@ -115,10 +131,12 @@ function closeDialog() {
 
 <template>
   <Dialog
+    v-if="open"
     v-model:visible="dialogVisible"
     modal
     header="Завершить тренировку"
     class="moto-dialog complete-training-dialog"
+    :draggable="false"
   >
     <div v-if="slot && student" class="form-stack">
       <div class="note-list">
@@ -187,7 +205,7 @@ function closeDialog() {
 
       <div class="dialog-actions">
         <Button label="Отмена" severity="secondary" @click="closeDialog" />
-        <Button label="Сохранить отчет" icon="pi pi-check" :disabled="!isFormValid" @click="saveReport" />
+        <Button label="Сохранить отчет" icon="pi pi-check" :disabled="!isFormValid || isSaving" @click="saveReport" />
       </div>
     </div>
   </Dialog>

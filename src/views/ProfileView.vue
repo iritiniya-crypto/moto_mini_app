@@ -10,7 +10,7 @@ import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
 import { newStudents as mockNewStudents } from '../mock/trainingContent'
 import { students } from '../mock/students'
-import type { BookingSlot, Skill, Student } from '../mock/types'
+import type { BookingSlot, PaymentStatus, Skill, Student } from '../mock/types'
 
 defineProps<{
   role: 'student' | 'instructor'
@@ -20,6 +20,7 @@ type StudentCard = Student
 
 const { slots } = useBookingStore()
 const {
+  addManualTraining,
   addTrainingVideo,
   allStudents: storeStudents,
   getStudent,
@@ -35,12 +36,17 @@ const studentDialogOpen = ref(false)
 const addStudentOpen = ref(false)
 const reportSelectionOpen = ref(false)
 const completeTrainingDialogOpen = ref(false)
+const manualTrainingOpen = ref(false)
+const isManualTrainingSaving = ref(false)
 const videoOpen = ref(false)
 const newStudents = ref(mockNewStudents.map((item) => ({ ...item, status: 'new' })))
 const manualStudents = ref<StudentCard[]>([])
 const customSkill = ref('')
 const trainingPlan = ref(selectedStudent.value.focus || '')
 const level = ref(selectedStudent.value.level)
+const packageTotal = ref(selectedStudent.value.trainingPackage?.total ?? 0)
+const packageCompleted = ref(selectedStudent.value.trainingPackage?.completed ?? 0)
+const packagePaymentStatus = ref<PaymentStatus>(selectedStudent.value.trainingPackage?.paymentStatus ?? 'не оплачено')
 const editableSkills = ref<Skill[]>([])
 const studentSaveMessage = ref('')
 const trainingToReport = ref<BookingSlot | null>(null)
@@ -50,6 +56,18 @@ const videoForm = ref({
   url: '',
   comment: '',
 })
+const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
+const paymentStatusOptions: PaymentStatus[] = ['оплачено', 'не оплачено', 'частично оплачено']
+const manualTrainingForm = ref({
+  date: '',
+  duration: '90 мин',
+  location: '',
+  trained: '',
+  improved: '',
+  nextFocus: '',
+  videoUrl: '',
+})
+const manualTrainingMessage = ref('')
 const newStudentForm = ref({
   name: '',
   username: '',
@@ -61,6 +79,15 @@ const activeStudents = computed(() => allStudents.value.length)
 
 const studentTrainingHistory = computed(() => getStudentTrainingHistory(student.value.id))
 const studentSkills = computed(() => getStudentSkills(student.value.id))
+const studentPackage = computed(
+  () =>
+    student.value.trainingPackage || {
+      total: 0,
+      completed: 0,
+      paymentStatus: 'не оплачено' as PaymentStatus,
+    },
+)
+const studentPackageText = computed(() => `${studentPackage.value.completed} / ${studentPackage.value.total}`)
 const selectedStudentSlots = computed(() =>
   slots.value.filter(
     (slot) =>
@@ -69,12 +96,18 @@ const selectedStudentSlots = computed(() =>
   ),
 )
 const selectedStudentReportSlots = computed(() =>
+  selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed'),
+)
+const selectedStudentVideoSlots = computed(() =>
   selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed' || slot.status === 'completed' || slot.status === 'rescheduled'),
 )
 
 function openStudentCard(nextStudent: StudentCard) {
   selectedStudent.value = nextStudent
   level.value = nextStudent.level
+  packageTotal.value = nextStudent.trainingPackage?.total ?? 0
+  packageCompleted.value = nextStudent.trainingPackage?.completed ?? 0
+  packagePaymentStatus.value = nextStudent.trainingPackage?.paymentStatus ?? 'не оплачено'
   trainingPlan.value = nextStudent.focus || ''
   editableSkills.value = (nextStudent.skills || []).map((skill) => ({ ...skill }))
   studentSaveMessage.value = ''
@@ -107,16 +140,29 @@ function statusLabel(status: BookingSlot['status']) {
 function saveStudentChanges() {
   const nextLevel = level.value.trim()
   const nextTrainingPlan = trainingPlan.value.trim()
+  const nextPackageTotal = Math.max(0, Number(packageTotal.value) || 0)
+  const nextPackageCompleted = Math.min(
+    nextPackageTotal,
+    Math.max(0, Number(packageCompleted.value) || 0),
+  )
 
   updateStudent(selectedStudent.value.id, {
     level: nextLevel || selectedStudent.value.level,
     focus: nextTrainingPlan,
+    trainingPackage: {
+      total: nextPackageTotal,
+      completed: nextPackageCompleted,
+      paymentStatus: packagePaymentStatus.value,
+    },
   })
   updateStudentSkills(selectedStudent.value.id, editableSkills.value)
 
   const updatedStudent = getStudent(selectedStudent.value.id)
   if (updatedStudent) {
     selectedStudent.value = updatedStudent
+    packageTotal.value = updatedStudent.trainingPackage?.total ?? 0
+    packageCompleted.value = updatedStudent.trainingPackage?.completed ?? 0
+    packagePaymentStatus.value = updatedStudent.trainingPackage?.paymentStatus ?? 'не оплачено'
     editableSkills.value = (updatedStudent.skills || []).map((skill) => ({ ...skill }))
   }
 
@@ -135,6 +181,84 @@ function selectTrainingForReport(slot: BookingSlot) {
   trainingToReport.value = slot
   reportSelectionOpen.value = false
   completeTrainingDialogOpen.value = true
+}
+
+function handleTrainingReportCompleted() {
+  completeTrainingDialogOpen.value = false
+  trainingToReport.value = null
+}
+
+function openManualTrainingDialog() {
+  manualTrainingForm.value = {
+    date: '',
+    duration: '90 мин',
+    location: '',
+    trained: '',
+    improved: '',
+    nextFocus: '',
+    videoUrl: '',
+  }
+  manualTrainingMessage.value = ''
+  isManualTrainingSaving.value = false
+  manualTrainingOpen.value = true
+}
+
+const isManualTrainingValid = computed(() => {
+  const form = manualTrainingForm.value
+
+  return Boolean(
+    form.date.trim() &&
+      form.duration.trim() &&
+      form.trained.trim() &&
+      form.improved.trim() &&
+      form.nextFocus.trim(),
+  )
+})
+
+function saveManualTraining() {
+  manualTrainingMessage.value = ''
+
+  if (!isManualTrainingValid.value) {
+    manualTrainingMessage.value = 'Заполните дату, что тренировали, что получилось и на что обратить внимание.'
+    return
+  }
+
+  if (isManualTrainingSaving.value) {
+    return
+  }
+
+  isManualTrainingSaving.value = true
+
+  const form = manualTrainingForm.value
+  const topics = form.trained
+    .split(',')
+    .map((topic) => topic.trim())
+    .filter(Boolean)
+
+  const history = addManualTraining(selectedStudent.value.id, {
+    date: form.date.trim(),
+    duration: form.duration,
+    location: form.location.trim() || undefined,
+    topics,
+    improved: form.improved.trim(),
+    nextFocus: form.nextFocus.trim(),
+    videoUrl: form.videoUrl.trim() || undefined,
+  })
+
+  if (history) {
+    const updatedStudent = getStudent(selectedStudent.value.id)
+    if (updatedStudent) {
+      selectedStudent.value = updatedStudent
+    }
+    studentSaveMessage.value = 'Тренировка добавлена'
+  } else {
+    manualTrainingMessage.value = 'Не удалось добавить тренировку: ученик не найден.'
+    isManualTrainingSaving.value = false
+    return
+  }
+
+  manualTrainingOpen.value = false
+  isManualTrainingSaving.value = false
 }
 
 function openVideoDialog() {
@@ -209,6 +333,11 @@ function addManualStudent() {
     nextLesson: 'Время еще не выбрано',
     avatar: '',
     focus: newStudentForm.value.comment || 'первичная тренировка и знакомство с мотоциклом',
+    trainingPackage: {
+      total: 0,
+      completed: 0,
+      paymentStatus: 'не оплачено',
+    },
   })
   newStudentForm.value = { name: '', username: '', comment: '' }
   addStudentOpen.value = false
@@ -225,7 +354,6 @@ function addSkill() {
     id: Date.now(),
     name,
     value: 20,
-    note: 'добавлено инструктором',
   })
   customSkill.value = ''
 }
@@ -252,6 +380,7 @@ function removeSkill(id: number) {
     <div class="metric-grid">
       <MetricCard label="Тренировок" :value="student.completedTrainingsCount" hint="в журнале" />
       <MetricCard label="Уровень" :value="student.level" hint="текущий" />
+      <MetricCard label="Пакет" :value="studentPackageText" :hint="studentPackage.paymentStatus" />
     </div>
 
     <section>
@@ -346,7 +475,7 @@ function removeSkill(id: number) {
       </div>
     </section>
 
-    <Dialog v-model:visible="addStudentOpen" modal header="Добавить ученика" class="moto-dialog">
+    <Dialog v-model:visible="addStudentOpen" modal header="Добавить ученика" class="moto-dialog" :draggable="false">
       <div class="form-stack">
         <label>
           Имя и фамилия
@@ -364,7 +493,7 @@ function removeSkill(id: number) {
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="studentDialogOpen" modal header="Карточка ученика" class="moto-dialog student-card-dialog">
+    <Dialog v-model:visible="studentDialogOpen" modal header="Карточка ученика" class="moto-dialog student-card-dialog" :draggable="false">
       <div class="form-stack student-dialog-content">
         <div class="student-dialog-header">
           <Avatar :image="studentAvatar" class="student-dialog-avatar" shape="circle" />
@@ -377,6 +506,7 @@ function removeSkill(id: number) {
 
         <div class="action-grid">
           <Button label="Заполнить отчет" icon="pi pi-pen-to-square" @click="openReportSelection" />
+          <Button label="Добавить тренировку вручную" icon="pi pi-plus-circle" severity="secondary" @click="openManualTrainingDialog" />
           <Button label="Добавить видео" icon="pi pi-video" severity="secondary" @click="openVideoDialog" />
           <Button label="Сохранить изменения" icon="pi pi-save" severity="secondary" @click="saveStudentChanges" />
         </div>
@@ -386,6 +516,33 @@ function removeSkill(id: number) {
           Уровень
           <Select v-model="level" :options="['Новичок', 'База', 'Уверенный старт', 'Город', 'Профи']" />
         </label>
+        <section class="package-editor">
+          <SectionHeader title="Пакет тренировок" />
+          <div class="package-grid">
+            <label>
+              Количество тренировок в пакете
+              <input v-model.number="packageTotal" class="skill-percent-input" type="number" min="0" />
+            </label>
+            <label>
+              Пройдено в текущем пакете
+              <input v-model.number="packageCompleted" class="skill-percent-input" type="number" min="0" :max="packageTotal" />
+            </label>
+            <label class="package-payment-field">
+              Статус оплаты
+              <Select v-model="packagePaymentStatus" :options="paymentStatusOptions" />
+            </label>
+          </div>
+          <div class="note-list">
+            <div>
+              <span>Пройдено</span>
+              <strong>{{ Math.min(Number(packageCompleted) || 0, Number(packageTotal) || 0) }} / {{ Number(packageTotal) || 0 }}</strong>
+            </div>
+            <div>
+              <span>Оплата</span>
+              <strong>{{ packagePaymentStatus }}</strong>
+            </div>
+          </div>
+        </section>
         <div class="note-list">
           <div>
             <span>Ближайшая тренировка</span>
@@ -435,7 +592,7 @@ function removeSkill(id: number) {
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="reportSelectionOpen" modal header="Выбрать тренировку для отчета" class="moto-dialog">
+    <Dialog v-model:visible="reportSelectionOpen" modal header="Выбрать тренировку для отчета" class="moto-dialog" :draggable="false">
       <div class="form-stack">
         <div v-if="selectedStudentReportSlots.length > 0" class="training-select-list">
           <button
@@ -459,14 +616,66 @@ function removeSkill(id: number) {
       :slot="trainingToReport"
       :student="selectedStudent"
       @update:open="completeTrainingDialogOpen = $event"
-      @completed="completeTrainingDialogOpen = false"
+      @completed="handleTrainingReportCompleted"
     />
 
-    <Dialog v-model:visible="videoOpen" modal header="Добавить видео к тренировке" class="moto-dialog">
+    <Dialog
+      v-if="manualTrainingOpen"
+      v-model:visible="manualTrainingOpen"
+      modal
+      header="Добавить тренировку"
+      class="moto-dialog"
+      :draggable="false"
+    >
       <div class="form-stack">
-        <div v-if="selectedStudentReportSlots.length > 0" class="training-select-list">
+        <label>
+          Дата
+          <InputText v-model="manualTrainingForm.date" placeholder="Например, 22 июня" />
+        </label>
+        <label>
+          Длительность
+          <Select v-model="manualTrainingForm.duration" :options="durationOptions" />
+        </label>
+        <label>
+          Локация
+          <InputText v-model="manualTrainingForm.location" placeholder="Например, Площадка Запад" />
+        </label>
+        <label>
+          Что тренировали
+          <Textarea
+            v-model="manualTrainingForm.trained"
+            rows="2"
+            auto-resize
+            placeholder="Например: Овал, Восьмерка, Торможение"
+          />
+        </label>
+        <label>
+          Что получилось
+          <Textarea v-model="manualTrainingForm.improved" rows="3" auto-resize />
+        </label>
+        <label>
+          На что обратить внимание
+          <Textarea v-model="manualTrainingForm.nextFocus" rows="3" auto-resize />
+        </label>
+        <label>
+          Видео Telegram
+          <InputText v-model="manualTrainingForm.videoUrl" placeholder="https://t.me/..." />
+        </label>
+        <p v-if="manualTrainingMessage" class="status-message">{{ manualTrainingMessage }}</p>
+        <Button
+          label="Сохранить тренировку"
+          icon="pi pi-check"
+          :disabled="isManualTrainingSaving"
+          @click="saveManualTraining"
+        />
+      </div>
+    </Dialog>
+
+    <Dialog v-model:visible="videoOpen" modal header="Добавить видео к тренировке" class="moto-dialog" :draggable="false">
+      <div class="form-stack">
+        <div v-if="selectedStudentVideoSlots.length > 0" class="training-select-list">
           <button
-            v-for="slot in selectedStudentReportSlots"
+            v-for="slot in selectedStudentVideoSlots"
             :key="slot.id"
             type="button"
             :class="['training-select-card', { active: videoTraining?.id === slot.id }]"

@@ -23,70 +23,74 @@ export function useTrainingStore() {
   }
 
   function createTrainingReport(report: Omit<TrainingReport, 'id' | 'createdAt'>) {
+    const student = getStudent(report.studentId)
+    if (!student) {
+      return null
+    }
+
     const id = Date.now()
     const newReport: TrainingReport = {
       ...report,
+      trainedSkills: [...report.trainedSkills],
+      skillUpdates: { ...report.skillUpdates },
       id,
       createdAt: Date.now(),
     }
 
     trainingReports.value.push(newReport)
 
-    // Update student data based on report
-    const student = getStudent(report.studentId)
-    if (student) {
-      // Increase completed trainings count
+    if (!student.trainingHistory) {
+      student.trainingHistory = []
+    }
+
+    const existingHistoryIndex = student.trainingHistory.findIndex((item) => item.slotId === report.slotId)
+
+    if (existingHistoryIndex < 0) {
       student.completedTrainingsCount++
+    }
 
-      // Add to training history
-      const history: TrainingHistory = {
-        id: Date.now(),
-        slotId: report.slotId,
-        date: report.date,
-        duration: report.duration,
-        location: report.location,
-        theme: report.trainedSkills.join(', '),
-        topics: report.trainedSkills,
-        comment: '',
-        improved: report.improved,
-        hasVideo: false,
-        mistakes: [],
-        nextFocus: report.nextFocus,
-        skillUpdates: {},
-      }
+    const history: TrainingHistory = {
+      id: existingHistoryIndex >= 0 ? student.trainingHistory[existingHistoryIndex].id : Date.now(),
+      slotId: report.slotId,
+      date: report.date,
+      duration: report.duration,
+      location: report.location,
+      theme: report.trainedSkills.join(', '),
+      topics: [...report.trainedSkills],
+      comment: '',
+      improved: report.improved,
+      hasVideo: false,
+      mistakes: [],
+      nextFocus: report.nextFocus,
+      skillUpdates: {},
+    }
 
-      if (!student.trainingHistory) {
-        student.trainingHistory = []
+    if (existingHistoryIndex >= 0) {
+      const existingHistory = student.trainingHistory[existingHistoryIndex]
+      student.trainingHistory[existingHistoryIndex] = {
+        ...existingHistory,
+        ...history,
+        hasVideo: existingHistory.hasVideo,
+        videoTitle: existingHistory.videoTitle,
+        videoUrl: existingHistory.videoUrl,
+        videoComment: existingHistory.videoComment,
       }
-      const existingHistoryIndex = student.trainingHistory.findIndex((item) => item.slotId === report.slotId)
-      if (existingHistoryIndex >= 0) {
-        student.trainingHistory[existingHistoryIndex] = {
-          ...student.trainingHistory[existingHistoryIndex],
-          ...history,
-          hasVideo: student.trainingHistory[existingHistoryIndex].hasVideo,
-          videoTitle: student.trainingHistory[existingHistoryIndex].videoTitle,
-          videoUrl: student.trainingHistory[existingHistoryIndex].videoUrl,
-          videoComment: student.trainingHistory[existingHistoryIndex].videoComment,
+    } else {
+      student.trainingHistory.unshift(history)
+    }
+
+    if (student.skills && existingHistoryIndex < 0) {
+      Object.entries(report.skillUpdates).forEach(([skillName, improvement]) => {
+        const skill = student.skills!.find((s) => s.name === skillName)
+        if (skill) {
+          const delta = getSkillDelta(improvement)
+          skill.value = Math.min(100, Math.max(0, skill.value + delta))
         }
-      } else {
-        student.trainingHistory.unshift(history)
-      }
+      })
+    }
 
-      // Update skills progress
-      if (student.skills) {
-        Object.entries(report.skillUpdates).forEach(([skillName, improvement]) => {
-          const skill = student.skills!.find((s) => s.name === skillName)
-          if (skill) {
-            const delta = getSkillDelta(improvement)
-            skill.value = Math.min(100, Math.max(0, skill.value + delta))
-          }
-        })
-      }
-
-      // Update level if changed
-      if (report.levelUpdate) {
-        student.level = report.levelUpdate
-      }
+    if (report.levelUpdate) {
+      student.level = report.levelUpdate
     }
 
     return newReport
@@ -151,6 +155,47 @@ export function useTrainingStore() {
     })
   }
 
+  function addManualTraining(
+    studentId: number,
+    training: Pick<TrainingHistory, 'date' | 'duration' | 'location' | 'topics' | 'improved' | 'nextFocus'> & {
+      videoUrl?: string
+    },
+  ) {
+    const student = getStudent(studentId)
+    if (!student) {
+      return null
+    }
+
+    if (!student.trainingHistory) {
+      student.trainingHistory = []
+    }
+
+    const id = Date.now()
+    const topics = training.topics.filter(Boolean)
+    const history: TrainingHistory = {
+      id,
+      slotId: -id,
+      date: training.date,
+      duration: training.duration,
+      location: training.location,
+      theme: topics.join(', ') || 'Ручная тренировка',
+      topics,
+      comment: '',
+      improved: training.improved,
+      hasVideo: Boolean(training.videoUrl),
+      mistakes: [],
+      nextFocus: training.nextFocus,
+      videoTitle: training.videoUrl ? 'Видео тренировки' : undefined,
+      videoUrl: training.videoUrl || undefined,
+      videoComment: training.videoUrl ? training.improved : undefined,
+    }
+
+    student.trainingHistory.unshift(history)
+    student.completedTrainingsCount++
+
+    return history
+  }
+
   function getStudentTrainingHistory(studentId: number) {
     const student = getStudent(studentId)
     return student?.trainingHistory || []
@@ -166,6 +211,7 @@ export function useTrainingStore() {
   }
 
   return {
+    addManualTraining,
     addTrainingVideo,
     allStudents,
     createTrainingReport,

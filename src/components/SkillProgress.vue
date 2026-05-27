@@ -10,10 +10,7 @@ defineProps<{
   <Card class="skill-card">
     <template #content>
       <div class="skill-top">
-        <div>
-          <strong>{{ skill.name }}</strong>
-          <span>{{ skill.note }}</span>
-        </div>
+        <strong>{{ skill.name }}</strong>
         <b>{{ skill.value }}%</b>
       </div>
       <ProgressBar :value="skill.value" :show-value="false" />

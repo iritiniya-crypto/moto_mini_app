@@ -1,15 +1,15 @@
 import type { Student, Skill } from './types'
 
 export const baseSkills: Skill[] = [
-  { id: 1, name: 'Овал', value: 70, note: 'ровнее газ' },
-  { id: 2, name: 'Восьмерка', value: 60, note: 'работать над входом' },
-  { id: 3, name: 'Змейка', value: 65, note: 'добавить скорость' },
-  { id: 4, name: 'Торможение', value: 64, note: 'добавить прогрессию переднего' },
-  { id: 5, name: 'Работа со сцеплением', value: 81, note: 'хороший контроль на малой скорости' },
-  { id: 6, name: 'Медленная езда', value: 76, note: 'меньше рывков' },
-  { id: 7, name: 'Развороты', value: 58, note: 'тренировать корпус и баланс' },
-  { id: 8, name: 'Взгляд в поворот', value: 72, note: 'лучше выходит на дуге' },
-  { id: 9, name: 'Движение в городе', value: 45, note: 'еще не начинали' },
+  { id: 1, name: 'Овал', value: 70 },
+  { id: 2, name: 'Восьмерка', value: 60 },
+  { id: 3, name: 'Змейка', value: 65 },
+  { id: 4, name: 'Торможение', value: 64 },
+  { id: 5, name: 'Работа со сцеплением', value: 81 },
+  { id: 6, name: 'Медленная езда', value: 76 },
+  { id: 7, name: 'Развороты', value: 58 },
+  { id: 8, name: 'Взгляд в поворот', value: 72 },
+  { id: 9, name: 'Движение в городе', value: 45 },
 ]
 
 export const students: Student[] = [
@@ -24,6 +24,11 @@ export const students: Student[] = [
     focus: 'держать взгляд выше и мягче работать сцеплением',
     skills: [...baseSkills],
     telegramUsername: '@alinamoro',
+    trainingPackage: {
+      total: 4,
+      completed: 2,
+      paymentStatus: 'оплачено',
+    },
     trainingHistory: [],
   },
   {
@@ -37,6 +42,11 @@ export const students: Student[] = [
     focus: 'дозировать передний тормоз без зажима рук',
     skills: [...baseSkills],
     telegramUsername: '@ilyakovalev',
+    trainingPackage: {
+      total: 3,
+      completed: 1,
+      paymentStatus: 'частично оплачено',
+    },
     trainingHistory: [],
   },
   {
@@ -50,6 +60,11 @@ export const students: Student[] = [
     focus: 'стабильная посадка и точка схватывания',
     skills: [...baseSkills],
     telegramUsername: '@maria.dani',
+    trainingPackage: {
+      total: 4,
+      completed: 0,
+      paymentStatus: 'не оплачено',
+    },
     trainingHistory: [],
   },
 ]
