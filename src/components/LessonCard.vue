@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Lesson } from '../mock/types'
+import type { TrainingHistory } from '../mock/types'
 
 defineProps<{
-  lesson: Lesson
+  lesson: TrainingHistory
 }>()
 </script>
 
@@ -12,16 +12,35 @@ defineProps<{
       <div class="lesson-head">
         <div>
           <span>{{ lesson.date }} · {{ lesson.duration }}</span>
-          <h3>{{ lesson.theme }}</h3>
+          <small v-if="lesson.location">Локация: {{ lesson.location }}</small>
         </div>
         <Tag value="завершено" severity="success" />
       </div>
 
-      <div class="topic-row">
-        <Tag v-for="topic in lesson.topics" :key="topic" :value="topic" />
+      <div class="note-list lesson-report">
+        <div>
+          <span>Что тренировали</span>
+          <strong>{{ lesson.topics.join(', ') || lesson.theme }}</strong>
+        </div>
+        <div v-if="lesson.improved">
+          <span>Что получилось</span>
+          <strong>{{ lesson.improved }}</strong>
+        </div>
+        <div v-if="lesson.nextFocus">
+          <span>На что обратить внимание</span>
+          <strong>{{ lesson.nextFocus }}</strong>
+        </div>
       </div>
 
-      <p>{{ lesson.comment }}</p>
+      <a
+        v-if="lesson.videoUrl"
+        class="location-link"
+        :href="lesson.videoUrl"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Открыть видео в Telegram
+      </a>
     </template>
   </Card>
 </template>

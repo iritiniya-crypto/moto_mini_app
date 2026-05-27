@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import SectionHeader from '../components/SectionHeader.vue'
 import eightSchemeUrl from '../assets/eight-scheme.png'
 import ovalSchemeUrl from '../assets/oval-scheme.png'
+import snakeSchemeUrl from '../assets/snake-sheme.png'
 import {
   motorcyclePrograms,
   scooterPrograms,
@@ -190,6 +191,10 @@ function togglePlanDay(day: string) {
 
         <div v-else-if="selectedTheory.scheme === 'oval'" class="real-scheme-card">
           <img :src="ovalSchemeUrl" alt="Схема упражнения Овал" />
+        </div>
+
+        <div v-else-if="selectedTheory.scheme === 'snake'" class="real-scheme-card">
+          <img :src="snakeSchemeUrl" alt="Схема упражнения Змейка" />
         </div>
 
         <div v-else :class="['exercise-scheme', `scheme-${selectedTheory.scheme}`]" aria-hidden="true">

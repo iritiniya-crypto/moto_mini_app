@@ -1,48 +1,182 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CompleteTrainingDialog from '../components/CompleteTrainingDialog.vue'
 import LessonCard from '../components/LessonCard.vue'
 import MetricCard from '../components/MetricCard.vue'
 import SectionHeader from '../components/SectionHeader.vue'
 import SkillProgress from '../components/SkillProgress.vue'
 import studentAvatar from '../assets/student-avatar.png'
+import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
 import { newStudents as mockNewStudents } from '../mock/trainingContent'
 import { students } from '../mock/students'
+import type { BookingSlot, Skill, Student } from '../mock/types'
 
 defineProps<{
   role: 'student' | 'instructor'
 }>()
 
-type StudentCard = (typeof students)[number]
+type StudentCard = Student
 
-const { getStudentTrainingHistory, getStudentSkills } = useTrainingStore()
+const { slots } = useBookingStore()
+const {
+  addTrainingVideo,
+  allStudents: storeStudents,
+  getStudent,
+  getStudentTrainingHistory,
+  getStudentSkills,
+  updateStudent,
+  updateStudentSkills,
+} = useTrainingStore()
 
-const student = students[0]
+const student = computed(() => getStudent(students[0].id) || students[0])
 const selectedStudent = ref<StudentCard>(students[0])
 const studentDialogOpen = ref(false)
 const addStudentOpen = ref(false)
+const reportSelectionOpen = ref(false)
+const completeTrainingDialogOpen = ref(false)
+const videoOpen = ref(false)
 const newStudents = ref(mockNewStudents.map((item) => ({ ...item, status: 'new' })))
 const manualStudents = ref<StudentCard[]>([])
 const customSkill = ref('')
-const note = ref(selectedStudent.value.notes || 'Закрепить взгляд в точку выхода и плавную работу сцеплением.')
+const trainingPlan = ref(selectedStudent.value.focus || '')
 const level = ref(selectedStudent.value.level)
+const editableSkills = ref<Skill[]>([])
+const studentSaveMessage = ref('')
+const trainingToReport = ref<BookingSlot | null>(null)
+const videoTraining = ref<BookingSlot | null>(null)
+const videoForm = ref({
+  title: '',
+  url: '',
+  comment: '',
+})
 const newStudentForm = ref({
   name: '',
   username: '',
   comment: '',
 })
 
-const allStudents = computed(() => [...students, ...manualStudents.value])
+const allStudents = computed(() => [...storeStudents.value, ...manualStudents.value])
 const activeStudents = computed(() => allStudents.value.length)
 
-const studentTrainingHistory = computed(() => getStudentTrainingHistory(student.id))
-const studentSkills = computed(() => getStudentSkills(student.id))
+const studentTrainingHistory = computed(() => getStudentTrainingHistory(student.value.id))
+const studentSkills = computed(() => getStudentSkills(student.value.id))
+const selectedStudentSlots = computed(() =>
+  slots.value.filter(
+    (slot) =>
+      slot.studentId === selectedStudent.value.id &&
+      ['requested', 'rescheduleRequested', 'confirmed', 'completed', 'rescheduled'].includes(slot.status),
+  ),
+)
+const selectedStudentReportSlots = computed(() =>
+  selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed' || slot.status === 'completed' || slot.status === 'rescheduled'),
+)
 
 function openStudentCard(nextStudent: StudentCard) {
   selectedStudent.value = nextStudent
   level.value = nextStudent.level
-  note.value = nextStudent.notes || ''
+  trainingPlan.value = nextStudent.focus || ''
+  editableSkills.value = (nextStudent.skills || []).map((skill) => ({ ...skill }))
+  studentSaveMessage.value = ''
   studentDialogOpen.value = true
+}
+
+function telegramHandle(nextStudent: StudentCard) {
+  return nextStudent.telegramUsername || `@${nextStudent.name.split(' ')[0].toLowerCase()}_moto`
+}
+
+function durationText(duration: string) {
+  return duration.replace('мин', 'минут')
+}
+
+function statusLabel(status: BookingSlot['status']) {
+  const labels = {
+    available: 'Свободно',
+    requested: 'На подтверждении',
+    confirmed: 'Подтверждено',
+    completed: 'Проведено',
+    rescheduleRequested: 'Перенос на подтверждении',
+    rescheduled: 'Перенесено',
+    cancelled: 'Отменено',
+    unavailable: 'Недоступно',
+  }
+
+  return labels[status]
+}
+
+function saveStudentChanges() {
+  const nextLevel = level.value.trim()
+  const nextTrainingPlan = trainingPlan.value.trim()
+
+  updateStudent(selectedStudent.value.id, {
+    level: nextLevel || selectedStudent.value.level,
+    focus: nextTrainingPlan,
+  })
+  updateStudentSkills(selectedStudent.value.id, editableSkills.value)
+
+  const updatedStudent = getStudent(selectedStudent.value.id)
+  if (updatedStudent) {
+    selectedStudent.value = updatedStudent
+    editableSkills.value = (updatedStudent.skills || []).map((skill) => ({ ...skill }))
+  }
+
+  studentSaveMessage.value = 'Изменения сохранены'
+}
+
+function clampSkillValue(skill: Skill) {
+  skill.value = Math.min(100, Math.max(0, Number(skill.value) || 0))
+}
+
+function openReportSelection() {
+  reportSelectionOpen.value = true
+}
+
+function selectTrainingForReport(slot: BookingSlot) {
+  trainingToReport.value = slot
+  reportSelectionOpen.value = false
+  completeTrainingDialogOpen.value = true
+}
+
+function openVideoDialog() {
+  videoTraining.value = null
+  videoForm.value = { title: '', url: '', comment: '' }
+  videoOpen.value = true
+}
+
+function selectTrainingForVideo(slot: BookingSlot) {
+  videoTraining.value = slot
+  videoForm.value = {
+    title: '',
+    url: '',
+    comment: '',
+  }
+}
+
+function saveTrainingVideo() {
+  if (!videoTraining.value || !videoForm.value.url.trim()) {
+    return
+  }
+
+  const history = getStudentTrainingHistory(selectedStudent.value.id).find((item) => item.slotId === videoTraining.value?.id)
+
+  addTrainingVideo(
+    selectedStudent.value.id,
+    {
+      slotId: videoTraining.value.id,
+      date: videoTraining.value.date,
+      duration: videoTraining.value.duration,
+      location: videoTraining.value.finalLocation,
+      theme: history?.theme || 'Видео тренировки',
+      topics: history?.topics || [],
+    },
+    {
+      title: videoForm.value.title.trim() || 'Видео тренировки',
+      url: videoForm.value.url.trim(),
+      comment: videoForm.value.comment.trim(),
+    },
+  )
+
+  videoOpen.value = false
 }
 
 function acceptNewStudent(id: number) {
@@ -87,21 +221,17 @@ function addSkill() {
     return
   }
 
-  if (selectedStudent.value.skills) {
-    selectedStudent.value.skills.push({
-      id: Date.now(),
-      name,
-      value: 20,
-      note: 'добавлено инструктором',
-    })
-  }
+  editableSkills.value.push({
+    id: Date.now(),
+    name,
+    value: 20,
+    note: 'добавлено инструктором',
+  })
   customSkill.value = ''
 }
 
 function removeSkill(id: number) {
-  if (selectedStudent.value.skills) {
-    selectedStudent.value.skills = selectedStudent.value.skills.filter((skill) => skill.id !== id)
-  }
+  editableSkills.value = editableSkills.value.filter((skill) => skill.id !== id)
 }
 </script>
 
@@ -113,7 +243,7 @@ function removeSkill(id: number) {
           <Avatar :image="studentAvatar" size="xlarge" shape="circle" />
           <div>
             <h1>{{ student.name }}</h1>
-            <p>{{ student.focus }}</p>
+            <p>{{ student.level }}</p>
           </div>
         </div>
       </template>
@@ -148,19 +278,6 @@ function removeSkill(id: number) {
       </Card>
     </section>
 
-    <section>
-      <SectionHeader title="Заметки инструктора" />
-      <Card class="settings-card">
-        <template #content>
-          <div class="note-list">
-            <div>
-              <span>Что тренировать дальше</span>
-              <strong>{{ student.notes || 'Информация будет после тренировки' }}</strong>
-            </div>
-          </div>
-        </template>
-      </Card>
-    </section>
   </section>
 
   <section v-else class="stack">
@@ -218,7 +335,7 @@ function removeSkill(id: number) {
         >
           <template #content>
             <div class="student-top">
-              <Avatar :image="student.avatar" shape="circle" />
+              <Avatar :image="studentAvatar" shape="circle" />
               <div>
                 <h3>{{ student.name }}</h3>
                 <span>{{ student.level }} · {{ student.completedTrainingsCount }} тренировок</span>
@@ -247,23 +364,38 @@ function removeSkill(id: number) {
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="studentDialogOpen" modal header="Карточка ученика" class="moto-dialog">
-      <div class="form-stack">
-        <div class="student-top">
-          <Avatar :image="selectedStudent.avatar" shape="circle" />
+    <Dialog v-model:visible="studentDialogOpen" modal header="Карточка ученика" class="moto-dialog student-card-dialog">
+      <div class="form-stack student-dialog-content">
+        <div class="student-dialog-header">
+          <Avatar :image="studentAvatar" class="student-dialog-avatar" shape="circle" />
           <div>
             <h3>{{ selectedStudent.name }}</h3>
-            <span>{{ selectedStudent.status }}</span>
+            <span>{{ telegramHandle(selectedStudent) }}</span>
+            <strong>{{ selectedStudent.level }}</strong>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <Button label="Заполнить отчет" icon="pi pi-pen-to-square" @click="openReportSelection" />
+          <Button label="Добавить видео" icon="pi pi-video" severity="secondary" @click="openVideoDialog" />
+          <Button label="Сохранить изменения" icon="pi pi-save" severity="secondary" @click="saveStudentChanges" />
+        </div>
+        <p v-if="studentSaveMessage" class="status-message">{{ studentSaveMessage }}</p>
+
+        <label>
+          Уровень
+          <Select v-model="level" :options="['Новичок', 'База', 'Уверенный старт', 'Город', 'Профи']" />
+        </label>
+        <div class="note-list">
+          <div>
+            <span>Ближайшая тренировка</span>
+            <strong>{{ selectedStudent.nextLesson }}</strong>
           </div>
         </div>
 
         <label>
-          Уровень
-          <InputText v-model="level" />
-        </label>
-        <label>
-          Заметка инструктора
-          <Textarea v-model="note" rows="3" auto-resize />
+          Что будем изучать на тренировке
+          <Textarea v-model="trainingPlan" rows="3" auto-resize />
         </label>
 
         <SectionHeader title="История тренировок" />
@@ -279,13 +411,20 @@ function removeSkill(id: number) {
         </div>
 
         <SectionHeader title="Навыки" />
-        <div v-if="selectedStudent.skills && selectedStudent.skills.length > 0" class="skill-edit-list">
-          <div v-for="skill in selectedStudent.skills" :key="skill.id" class="skill-edit-row">
+        <div v-if="editableSkills.length > 0" class="skill-edit-list">
+          <label v-for="skill in editableSkills" :key="skill.id" class="skill-edit-row skill-percent-row">
             <span>{{ skill.name }}</span>
-            <div>
-              <Button icon="pi pi-trash" size="small" severity="secondary" @click="removeSkill(skill.id)" />
-            </div>
-          </div>
+            <input
+              v-model.number="skill.value"
+              class="skill-percent-input"
+              type="number"
+              min="0"
+              max="100"
+              @input="clampSkillValue(skill)"
+            />
+            <strong>{{ skill.value }}%</strong>
+            <Button icon="pi pi-trash" size="small" severity="secondary" @click="removeSkill(skill.id)" />
+          </label>
         </div>
 
         <label>
@@ -293,6 +432,68 @@ function removeSkill(id: number) {
           <InputText v-model="customSkill" placeholder="например, маневрирование" />
         </label>
         <Button label="Добавить навык" icon="pi pi-plus" @click="addSkill" />
+      </div>
+    </Dialog>
+
+    <Dialog v-model:visible="reportSelectionOpen" modal header="Выбрать тренировку для отчета" class="moto-dialog">
+      <div class="form-stack">
+        <div v-if="selectedStudentReportSlots.length > 0" class="training-select-list">
+          <button
+            v-for="slot in selectedStudentReportSlots"
+            :key="slot.id"
+            type="button"
+            class="training-select-card"
+            @click="selectTrainingForReport(slot)"
+          >
+            <span>{{ slot.date }} · {{ slot.time }} · {{ durationText(slot.duration) }}</span>
+            <strong>{{ slot.finalLocation || 'Локация не указана' }}</strong>
+            <Tag :value="statusLabel(slot.status)" />
+          </button>
+        </div>
+        <p v-else class="status-message">У ученика пока нет подтвержденных тренировок для отчета.</p>
+      </div>
+    </Dialog>
+
+    <CompleteTrainingDialog
+      :open="completeTrainingDialogOpen"
+      :slot="trainingToReport"
+      :student="selectedStudent"
+      @update:open="completeTrainingDialogOpen = $event"
+      @completed="completeTrainingDialogOpen = false"
+    />
+
+    <Dialog v-model:visible="videoOpen" modal header="Добавить видео к тренировке" class="moto-dialog">
+      <div class="form-stack">
+        <div v-if="selectedStudentReportSlots.length > 0" class="training-select-list">
+          <button
+            v-for="slot in selectedStudentReportSlots"
+            :key="slot.id"
+            type="button"
+            :class="['training-select-card', { active: videoTraining?.id === slot.id }]"
+            @click="selectTrainingForVideo(slot)"
+          >
+            <span>{{ slot.date }} · {{ slot.time }} · {{ durationText(slot.duration) }}</span>
+            <strong>{{ slot.finalLocation || 'Локация не указана' }}</strong>
+            <Tag :value="statusLabel(slot.status)" />
+          </button>
+        </div>
+        <p v-else class="status-message">У ученика пока нет тренировок, к которым можно прикрепить видео.</p>
+
+        <template v-if="videoTraining">
+          <label>
+            Ссылка на Telegram-видео
+            <InputText v-model="videoForm.url" placeholder="https://t.me/..." />
+          </label>
+          <label>
+            Название / короткий комментарий
+            <InputText v-model="videoForm.title" />
+          </label>
+          <label>
+            Короткий комментарий
+            <Textarea v-model="videoForm.comment" rows="3" auto-resize />
+          </label>
+          <Button label="Сохранить видео" icon="pi pi-check" :disabled="!videoForm.url.trim()" @click="saveTrainingVideo" />
+        </template>
       </div>
     </Dialog>
   </section>

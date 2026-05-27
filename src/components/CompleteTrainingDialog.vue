@@ -26,7 +26,6 @@ const selectedSkills = ref<string[]>([])
 const skillImprovements = ref<Record<string, string>>({})
 const improved = ref('')
 const nextFocus = ref('')
-const instructorComment = ref('')
 const levelUpdate = ref<string | null>(null)
 
 const improvementOptions = [
@@ -35,6 +34,7 @@ const improvementOptions = [
   'Заметно лучше',
   'Нужно повторить',
 ]
+const levelOptions = ['Новичок', 'База', 'Уверенный старт', 'Город', 'Профи']
 
 watch(
   () => [props.open, props.student],
@@ -44,16 +44,30 @@ watch(
       skillImprovements.value = {}
       improved.value = ''
       nextFocus.value = ''
-      instructorComment.value = ''
       levelUpdate.value = props.student.level || null
     }
   },
   { immediate: true },
 )
 
+watch(selectedSkills, (skills) => {
+  const nextImprovements: Record<string, string> = {}
+
+  skills.forEach((skill) => {
+    nextImprovements[skill] = skillImprovements.value[skill] || 'Без изменений'
+  })
+
+  skillImprovements.value = nextImprovements
+})
+
 const durationMinutes = computed(() => {
   if (!props.slot) return 0
   return parseInt(props.slot.duration) || 0
+})
+
+const dialogVisible = computed({
+  get: () => props.open,
+  set: (value: boolean) => emit('update:open', value),
 })
 
 function initializeSkillImprovements() {
@@ -80,7 +94,6 @@ function saveReport() {
     trainedSkills: selectedSkills.value,
     improved: improved.value,
     nextFocus: nextFocus.value,
-    instructorComment: instructorComment.value,
     skillUpdates: skillImprovements.value,
     levelUpdate: levelUpdate.value && levelUpdate.value !== props.student.level ? levelUpdate.value : undefined,
   })
@@ -94,163 +107,138 @@ function saveReport() {
 const isFormValid = computed(() => {
   return selectedSkills.value.length > 0 && improved.value.trim() && nextFocus.value.trim()
 })
+
+function closeDialog() {
+  emit('update:open', false)
+}
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-    <div class="w-full sm:w-full max-w-2xl bg-gray-900 rounded-t-3xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold text-white">Завершить тренировку</h2>
-        <button
-          @click="() => emit('update:open', false)"
-          class="text-gray-400 hover:text-white text-2xl"
-        >
-          ✕
-        </button>
+  <Dialog
+    v-model:visible="dialogVisible"
+    modal
+    header="Завершить тренировку"
+    class="moto-dialog complete-training-dialog"
+  >
+    <div v-if="slot && student" class="form-stack">
+      <div class="note-list">
+        <div>
+          <span>Ученик</span>
+          <strong>{{ student.name }}</strong>
+        </div>
+        <div>
+          <span>Дата и время</span>
+          <strong>{{ slot.date }} · {{ slot.time }}</strong>
+        </div>
+        <div>
+          <span>Длительность</span>
+          <strong>{{ durationMinutes }} минут</strong>
+        </div>
+        <div>
+          <span>Локация</span>
+          <strong>{{ slot.finalLocation || 'Не указано' }}</strong>
+        </div>
       </div>
 
-      <div class="space-y-6">
-        <!-- Ученик -->
-        <div>
-          <label class="block text-sm text-gray-300 mb-2">Ученик</label>
-          <div class="text-white font-medium">{{ student?.name }}</div>
+      <section>
+        <label class="field-label">Что тренировали</label>
+        <div class="skill-check-grid">
+          <label v-for="skill in availableSkills" :key="skill.id" class="skill-check-item">
+            <input v-model="selectedSkills" type="checkbox" :value="skill.name" />
+            <span>{{ skill.name }}</span>
+          </label>
         </div>
+      </section>
 
-        <!-- Дата и время -->
-        <div>
-          <label class="block text-sm text-gray-300 mb-2">Дата и время</label>
-          <div class="text-white">{{ slot?.date }} · {{ slot?.time }} · {{ durationMinutes }} минут</div>
-        </div>
+      <label>
+        Что получилось
+        <Textarea
+          v-model="improved"
+          rows="3"
+          auto-resize
+          placeholder="Например: стала ровнее скорость, меньше резких движений рулем"
+        />
+      </label>
 
-        <!-- Что тренировали -->
-        <div>
-          <label class="block text-sm text-gray-300 mb-3">Что тренировали</label>
-          <div class="space-y-2 max-h-40 overflow-y-auto">
-            <div v-for="skill in availableSkills" :key="skill.id" class="flex items-center">
-              <input
-                :id="`skill-${skill.id}`"
-                v-model="selectedSkills"
-                type="checkbox"
-                :value="skill.name"
-                class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-blue-500 cursor-pointer"
-              />
-              <label :for="`skill-${skill.id}`" class="ml-3 text-white cursor-pointer">{{ skill.name }}</label>
-            </div>
-          </div>
-        </div>
+      <label>
+        На что обратить внимание
+        <Textarea
+          v-model="nextFocus"
+          rows="3"
+          auto-resize
+          placeholder="Например: смотреть в выход, мягче работать газом, расслабить руки"
+        />
+      </label>
 
-        <!-- Что получилось -->
-        <div>
-          <label for="improved" class="block text-sm text-gray-300 mb-2">Что получилось</label>
-          <textarea
-            id="improved"
-            v-model="improved"
-            placeholder="Например: стала ровнее скорость, меньше резких движений рулем"
-            class="w-full px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            rows="3"
-          />
+      <section v-if="selectedSkills.length > 0">
+        <label class="field-label">Оценка прогресса навыков</label>
+        <div class="skill-update-list">
+          <label v-for="skill in selectedSkills" :key="skill" class="skill-update-row">
+            <span>{{ skill }}</span>
+            <Select v-model="skillImprovements[skill]" :options="improvementOptions" />
+          </label>
         </div>
+      </section>
 
-        <!-- Что тренировать дальше -->
-        <div>
-          <label for="nextFocus" class="block text-sm text-gray-300 mb-2">Что тренировать дальше</label>
-          <textarea
-            id="nextFocus"
-            v-model="nextFocus"
-            placeholder="Например: смотреть в выход, мягче работать газом, расслабить руки"
-            class="w-full px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            rows="3"
-          />
-        </div>
+      <label>
+        Уровень ученика
+        <Select v-model="levelUpdate" :options="levelOptions" />
+      </label>
 
-        <!-- Комментарий Никиты -->
-        <div>
-          <label for="comment" class="block text-sm text-gray-300 mb-2">Комментарий для ученика</label>
-          <textarea
-            id="comment"
-            v-model="instructorComment"
-            placeholder="Короткий комментарий после занятия"
-            class="w-full px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            rows="2"
-          />
-        </div>
-
-        <!-- Обновить навыки -->
-        <div v-if="selectedSkills.length > 0">
-          <label class="block text-sm text-gray-300 mb-3">Оценка прогресса навыков</label>
-          <div class="space-y-3">
-            <div v-for="skill in selectedSkills" :key="skill" class="flex items-center gap-3">
-              <span class="text-white text-sm font-medium flex-1">{{ skill }}</span>
-              <select
-                v-model="skillImprovements[skill]"
-                class="px-3 py-1 rounded bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-blue-500"
-              >
-                <option v-for="option in improvementOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Уровень ученика -->
-        <div>
-          <label for="level" class="block text-sm text-gray-300 mb-2">Уровень ученика</label>
-          <select
-            id="level"
-            v-model="levelUpdate"
-            class="w-full px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-blue-500"
-          >
-            <option value="Новичок">Новичок</option>
-            <option value="База">База</option>
-            <option value="Уверенный старт">Уверенный старт</option>
-            <option value="Город">Город</option>
-            <option value="Профи">Профи</option>
-          </select>
-        </div>
-
-        <!-- Кнопки -->
-        <div class="flex gap-3 pt-4">
-          <button
-            @click="() => emit('update:open', false)"
-            class="flex-1 px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white hover:bg-gray-700 transition"
-          >
-            Отмена
-          </button>
-          <button
-            @click="saveReport"
-            :disabled="!isFormValid"
-            :class="[
-              'flex-1 px-4 py-2 rounded font-medium transition',
-              isFormValid
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed',
-            ]"
-          >
-            Сохранить отчет
-          </button>
-        </div>
+      <div class="dialog-actions">
+        <Button label="Отмена" severity="secondary" @click="closeDialog" />
+        <Button label="Сохранить отчет" icon="pi pi-check" :disabled="!isFormValid" @click="saveReport" />
       </div>
     </div>
-  </div>
+  </Dialog>
 </template>
 
 <style scoped>
-/* Custom scrollbar styling for dark theme */
-::-webkit-scrollbar {
-  width: 6px;
+.field-label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--dim);
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.skill-check-grid {
+  display: grid;
+  gap: 8px;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 3px;
+.skill-check-item,
+.skill-update-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #777;
+.skill-check-item input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.skill-update-row {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.skill-update-list {
+  display: grid;
+  gap: 8px;
+}
+
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 4px;
 }
 </style>

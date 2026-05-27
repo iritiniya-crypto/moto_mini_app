@@ -41,15 +41,16 @@ export function useTrainingStore() {
       // Add to training history
       const history: TrainingHistory = {
         id: Date.now(),
+        slotId: report.slotId,
         date: report.date,
         duration: report.duration,
+        location: report.location,
         theme: report.trainedSkills.join(', '),
         topics: report.trainedSkills,
-        comment: report.instructorComment,
+        comment: '',
         improved: report.improved,
         hasVideo: false,
         mistakes: [],
-        instructorComment: report.instructorComment,
         nextFocus: report.nextFocus,
         skillUpdates: {},
       }
@@ -57,7 +58,19 @@ export function useTrainingStore() {
       if (!student.trainingHistory) {
         student.trainingHistory = []
       }
-      student.trainingHistory.unshift(history)
+      const existingHistoryIndex = student.trainingHistory.findIndex((item) => item.slotId === report.slotId)
+      if (existingHistoryIndex >= 0) {
+        student.trainingHistory[existingHistoryIndex] = {
+          ...student.trainingHistory[existingHistoryIndex],
+          ...history,
+          hasVideo: student.trainingHistory[existingHistoryIndex].hasVideo,
+          videoTitle: student.trainingHistory[existingHistoryIndex].videoTitle,
+          videoUrl: student.trainingHistory[existingHistoryIndex].videoUrl,
+          videoComment: student.trainingHistory[existingHistoryIndex].videoComment,
+        }
+      } else {
+        student.trainingHistory.unshift(history)
+      }
 
       // Update skills progress
       if (student.skills) {
@@ -66,16 +79,9 @@ export function useTrainingStore() {
           if (skill) {
             const delta = getSkillDelta(improvement)
             skill.value = Math.min(100, Math.max(0, skill.value + delta))
-            skill.note = report.improved
           }
         })
       }
-
-      // Update student notes
-      student.notes = report.nextFocus
-
-      // Update student focus
-      student.focus = report.nextFocus
 
       // Update level if changed
       if (report.levelUpdate) {
@@ -93,6 +99,58 @@ export function useTrainingStore() {
     }
   }
 
+  function updateStudentSkills(studentId: number, skills: Student['skills']) {
+    const student = getStudent(studentId)
+    if (student && skills) {
+      student.skills = skills.map((skill) => ({
+        ...skill,
+        value: Math.min(100, Math.max(0, Number(skill.value) || 0)),
+      }))
+    }
+  }
+
+  function addTrainingVideo(
+    studentId: number,
+    training: Pick<TrainingHistory, 'slotId' | 'date' | 'duration' | 'location' | 'theme' | 'topics'>,
+    video: { title: string; url: string; comment: string },
+  ) {
+    const student = getStudent(studentId)
+    if (!student) {
+      return
+    }
+
+    if (!student.trainingHistory) {
+      student.trainingHistory = []
+    }
+
+    const existingHistory = student.trainingHistory.find((item) => item.slotId === training.slotId)
+    const videoPatch = {
+      hasVideo: true,
+      videoTitle: video.title,
+      videoUrl: video.url,
+      videoComment: video.comment,
+    }
+
+    if (existingHistory) {
+      Object.assign(existingHistory, videoPatch)
+      return
+    }
+
+    student.trainingHistory.unshift({
+      id: Date.now(),
+      slotId: training.slotId,
+      date: training.date,
+      duration: training.duration,
+      location: training.location,
+      theme: training.theme || 'Видео тренировки',
+      topics: training.topics,
+      comment: video.comment,
+      improved: '',
+      mistakes: [],
+      ...videoPatch,
+    })
+  }
+
   function getStudentTrainingHistory(studentId: number) {
     const student = getStudent(studentId)
     return student?.trainingHistory || []
@@ -103,13 +161,20 @@ export function useTrainingStore() {
     return student?.skills || []
   }
 
+  function getStudentTrainingVideos(studentId: number) {
+    return getStudentTrainingHistory(studentId).filter((history) => history.videoUrl)
+  }
+
   return {
+    addTrainingVideo,
     allStudents,
     createTrainingReport,
     getStudent,
     getStudentTrainingHistory,
+    getStudentTrainingVideos,
     getStudentSkills,
     trainingReports: computed(() => trainingReports.value),
+    updateStudentSkills,
     updateStudent,
   }
 }

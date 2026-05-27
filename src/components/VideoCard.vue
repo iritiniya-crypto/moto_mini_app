@@ -20,7 +20,9 @@ defineProps<{
         <span>{{ video.date }} · {{ video.theme }}</span>
         <p>{{ video.comment }}</p>
         <small>{{ video.telegramUrl }}</small>
-        <Button label="Смотреть в Telegram" icon="pi pi-external-link" size="small" />
+        <a class="location-link" :href="video.telegramUrl" target="_blank" rel="noreferrer">
+          Открыть видео в Telegram
+        </a>
       </div>
     </template>
   </Card>

@@ -16,21 +16,24 @@ export type Student = {
   focus: string
   skills?: Skill[]
   trainingHistory?: TrainingHistory[]
-  notes?: string
   telegramUsername?: string
 }
 
 export type TrainingHistory = {
   id: number
+  slotId?: number
   date: string
   duration: string
+  location?: string
   theme: string
   topics: string[]
   comment: string
   mistakes: string[]
   improved: string
   hasVideo: boolean
-  instructorComment?: string
+  videoTitle?: string
+  videoUrl?: string
+  videoComment?: string
   nextFocus?: string
   skillUpdates?: Record<string, number>
 }
@@ -66,7 +69,6 @@ export type TrainingReport = {
   trainedSkills: string[]
   improved: string
   nextFocus: string
-  instructorComment: string
   skillUpdates: Record<string, string>
   levelUpdate?: string
   createdAt: number

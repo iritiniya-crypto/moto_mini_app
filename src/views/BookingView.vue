@@ -34,7 +34,7 @@ function statusLabel(status: BookingSlot["status"]) {
     rescheduled: 'Перенесено',
     cancelled: 'Отменено',
     unavailable: 'Недоступно',
-      completed: "Проведено",
+    completed: 'Проведено',
   }
 
   return labels[status]
