@@ -125,13 +125,12 @@ function durationText(duration: string) {
 function statusLabel(status: BookingSlot['status']) {
   const labels = {
     available: 'Свободно',
-    requested: 'На подтверждении',
+    requested: 'Ожидает подтверждения',
     confirmed: 'Подтверждено',
     completed: 'Проведено',
     rescheduleRequested: 'Перенос на подтверждении',
     rescheduled: 'Перенесено',
     cancelled: 'Отменено',
-    unavailable: 'Недоступно',
   }
 
   return labels[status]

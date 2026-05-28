@@ -1,4 +1,4 @@
-import type { Lesson, ScheduleItem } from './types'
+import type { Lesson } from './types'
 
 export const lessons: Lesson[] = [
   {
@@ -34,10 +34,4 @@ export const lessons: Lesson[] = [
     improved: 'лучше видит выход из поворота',
     hasVideo: true,
   },
-]
-
-export const schedule: ScheduleItem[] = [
-  { id: 1, time: '10:00', student: 'Мария Данилова', theme: 'сцепление и баланс', status: 'подтверждено' },
-  { id: 2, time: '14:30', student: 'Илья Ковалев', theme: 'торможение', status: 'ожидает' },
-  { id: 3, time: '18:30', student: 'Алина Морозова', theme: 'развороты', status: 'следующее' },
 ]

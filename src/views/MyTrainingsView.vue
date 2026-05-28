@@ -4,7 +4,8 @@ import SectionHeader from '../components/SectionHeader.vue'
 import { useBookingStore } from '../composables/useBookingStore'
 import type { BookingSlot } from '../mock/types'
 
-const { activeStudentSlot, requestSlot, slots, updateSlot } = useBookingStore()
+const currentStudentId = 1
+const { activeStudentSlot, requestSlot, availableSlots, slots, updateSlot } = useBookingStore()
 const selectedSlotId = ref<number | null>(null)
 const moving = ref(false)
 const moveRequested = ref(false)
@@ -17,19 +18,18 @@ const bookingForm = ref({
   studentComment: '',
 })
 
-const nextTraining = ref({
-  date: '28 мая',
-  time: '18:30',
-  duration: '90 мин',
-  finalLocation: 'Площадка Запад',
-  finalLocationUrl: 'https://maps.google.com/?q=Ploshchadka+Zapad',
-  instructorComment: 'Встречаемся у въезда на площадку, возьмите закрытую обувь.',
-  status: 'Подтверждено',
-  comment: 'Возьмите защиту и приезжайте за 5-10 минут до начала.',
+const studentActiveSlots = computed(() =>
+  slots.value.filter(
+    (slot) =>
+      slot.studentId === currentStudentId &&
+      (slot.status === 'requested' || slot.status === 'confirmed' || slot.status === 'rescheduleRequested' || slot.status === 'rescheduled'),
+  ),
+)
+const nextTraining = computed(() => studentActiveSlots.value.find((slot) => slot.status === 'confirmed') ?? studentActiveSlots.value[0] ?? null)
+const selectedSlot = computed(() => {
+  const activeSlot = activeStudentSlot.value?.studentId === currentStudentId ? activeStudentSlot.value : null
+  return activeSlot ?? studentActiveSlots.value.find((slot) => slot.id === selectedSlotId.value) ?? nextTraining.value
 })
-
-const availableSlots = computed(() => slots.value.filter((slot) => slot.status === 'available'))
-const selectedSlot = computed(() => activeStudentSlot.value ?? slots.value.find((slot) => slot.id === selectedSlotId.value))
 
 function durationText(duration: string) {
   return duration.replace('мин', 'минут')
@@ -38,12 +38,11 @@ function durationText(duration: string) {
 function statusLabel(status: BookingSlot['status']) {
   const labels = {
     available: 'Свободно',
-    requested: 'На подтверждении',
+    requested: 'Ожидает подтверждения',
     confirmed: 'Подтверждено',
     rescheduleRequested: 'Перенос на подтверждении',
     rescheduled: 'Перенесено',
     cancelled: 'Отменено',
-    unavailable: 'Недоступно',
     completed: 'Проведено',
   }
 
@@ -68,7 +67,7 @@ function submitBooking() {
   selectedSlotId.value = slot.id
   requestSlot(
     slot.id,
-    1,  // studentId - current student
+    currentStudentId,
     bookingForm.value.preference,
     bookingForm.value.studentComment,
     moving.value ? 'rescheduleRequested' : 'requested',
@@ -91,16 +90,6 @@ function confirmMove() {
       finalLocationUrl: 'https://maps.google.com/?q=Ploshchadka+Zapad',
       instructorComment: 'Перенос подтвержден. Встречаемся у въезда на площадку.',
     })
-    nextTraining.value = {
-      date: selectedSlot.value.date,
-      time: selectedSlot.value.time,
-      duration: selectedSlot.value.duration,
-      finalLocation: 'Площадка Запад',
-      finalLocationUrl: 'https://maps.google.com/?q=Ploshchadka+Zapad',
-      instructorComment: 'Перенос подтвержден. Встречаемся у въезда на площадку.',
-      status: 'Перенесено',
-      comment: 'Перенос подтвержден. Новое время уже в расписании.',
-    }
   }
 
   moving.value = false
@@ -115,22 +104,33 @@ function confirmMove() {
       <template #content>
         <h1>Ближайшая тренировка</h1>
 
-        <div class="training-main">
+        <div v-if="nextTraining" class="training-main">
           <div>
             <span>{{ nextTraining.date }}</span>
             <strong>{{ nextTraining.time }}</strong>
           </div>
-          <Tag :value="nextTraining.status" severity="success" />
+          <Tag
+            :value="statusLabel(nextTraining.status)"
+            :severity="nextTraining.status === 'confirmed' || nextTraining.status === 'rescheduled' ? 'success' : 'warn'"
+          />
         </div>
 
-        <div class="training-place">
+        <div v-if="nextTraining" class="training-place">
           <i class="pi pi-map-marker" />
-          <span>{{ nextTraining.finalLocation }} · {{ durationText(nextTraining.duration) }}</span>
+          <span>{{ nextTraining.finalLocation || 'Локация появится после подтверждения' }} · {{ durationText(nextTraining.duration) }}</span>
         </div>
 
-        <p>{{ nextTraining.comment }}</p>
+        <p v-if="nextTraining?.status === 'confirmed' || nextTraining?.status === 'rescheduled'">
+          {{ nextTraining.instructorComment || 'Возьмите защиту и приезжайте за 5-10 минут до начала.' }}
+        </p>
+        <p v-else-if="nextTraining">
+          Запрос отправлен Никите. После подтверждения здесь появятся финальная локация и комментарий.
+        </p>
+        <p v-else>
+          Активной записи пока нет. Выберите свободное время ниже.
+        </p>
         <a
-          v-if="nextTraining.finalLocationUrl"
+          v-if="nextTraining?.finalLocationUrl"
           class="location-link primary"
           :href="nextTraining.finalLocationUrl"
           target="_blank"
@@ -138,8 +138,8 @@ function confirmMove() {
         >
           Открыть локацию
         </a>
-        <span v-else class="location-empty">Ссылка на локацию появится после подтверждения</span>
-        <Button label="Перенести" icon="pi pi-refresh" severity="secondary" @click="startMove" />
+        <span v-else-if="nextTraining" class="location-empty">Ссылка на локацию появится после подтверждения</span>
+        <Button v-if="nextTraining" label="Перенести" icon="pi pi-refresh" severity="secondary" @click="startMove" />
       </template>
     </Card>
 

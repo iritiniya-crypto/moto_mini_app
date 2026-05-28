@@ -7,17 +7,25 @@ const activeStudentSlotId = ref<number | null>(null)
 
 export function useBookingStore() {
   const activeStudentSlot = computed(() => slots.value.find((slot) => slot.id === activeStudentSlotId.value))
-  const requestedSlots = computed(() =>
-    slots.value.filter((slot) => slot.status === 'requested' || slot.status === 'rescheduleRequested'),
+  const bookingManagementSlots = computed(() =>
+    slots.value.filter((slot) => slot.status === 'available' || slot.status === 'requested'),
   )
+
+  const availableSlots = computed(() => slots.value.filter((slot) => slot.status === 'available'))
+
+  const requestedSlots = computed(() => slots.value.filter((slot) => slot.status === 'requested'))
 
   const confirmedSlots = computed(() =>
     slots.value.filter((slot) => slot.status === 'confirmed'),
   )
 
-  const completedSlots = computed(() =>
-    slots.value.filter((slot) => slot.status === 'completed'),
-  )
+  function getStudentActiveSlots(studentId: number) {
+    return slots.value.filter(
+      (slot) =>
+        slot.studentId === studentId &&
+        (slot.status === 'requested' || slot.status === 'confirmed' || slot.status === 'rescheduleRequested' || slot.status === 'rescheduled'),
+    )
+  }
 
   function addSlot(slot: Omit<BookingSlot, 'id'>) {
     slots.value.unshift({
@@ -83,14 +91,16 @@ export function useBookingStore() {
     activeStudentSlot,
     activeStudentSlotId,
     addSlot,
+    availableSlots,
+    bookingManagementSlots,
     completeSlot,
     confirmSlot,
     declineSlot,
+    getStudentActiveSlots,
     removeSlot,
     requestSlot,
     requestedSlots,
     confirmedSlots,
-    completedSlots,
     slots,
     updateSlot,
   }

@@ -271,6 +271,18 @@ p {
   align-items: start;
 }
 
+.hero-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hero-title-row .p-button {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
 .metric-grid,
 .student-grid,
 .theory-grid,
@@ -836,14 +848,87 @@ p {
   margin-top: 18px;
 }
 
+.calendar-dialog.p-dialog {
+  width: min(calc(100vw - 28px), 680px);
+}
+
+.calendar-content,
+.calendar-agenda,
+.calendar-day-group {
+  display: grid;
+  gap: 14px;
+}
+
+.calendar-filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.calendar-filter-row button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.calendar-filter-row button.active {
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(223, 63, 63, 0.92), rgba(244, 186, 69, 0.62));
+}
+
+.calendar-training-card {
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.calendar-training-card .p-card-content {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-training-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar-training-top strong,
+.calendar-training-details span {
+  display: block;
+}
+
+.calendar-training-top span,
+.calendar-training-details span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .schedule-item {
+  display: grid;
+  gap: 12px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.055);
 }
 
-.schedule-item > strong {
+.schedule-item-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.schedule-item-main > strong {
   color: var(--accent-2);
   font-size: 1.25rem;
 }
@@ -898,10 +983,6 @@ p {
 
 .slot-card.requested {
   border-color: rgba(244, 186, 69, 0.42);
-}
-
-.slot-card.unavailable {
-  opacity: 0.68;
 }
 
 .warning-card {

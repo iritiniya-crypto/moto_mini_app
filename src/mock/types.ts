@@ -106,13 +106,4 @@ export type BookingSlot = {
     | 'rescheduleRequested'
     | 'rescheduled'
     | 'cancelled'
-    | 'unavailable'
-}
-
-export type ScheduleItem = {
-  id: number
-  time: string
-  student: string
-  theme: string
-  status: string
 }

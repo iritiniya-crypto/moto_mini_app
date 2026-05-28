@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import SectionHeader from '../components/SectionHeader.vue'
 import { useBookingStore } from '../composables/useBookingStore'
 import type { BookingSlot } from '../mock/types'
@@ -8,18 +8,24 @@ const props = defineProps<{
   role: 'student' | 'instructor'
 }>()
 
-const { addSlot, removeSlot, slots, updateSlot } = useBookingStore()
+const { addSlot, bookingManagementSlots, removeSlot, requestSlot, updateSlot, availableSlots, slots } = useBookingStore()
 const slotDialogOpen = ref(false)
 const editingSlotId = ref<number | null>(null)
 const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
-const statusOptions: BookingSlot['status'][] = ['available', 'unavailable']
+const defaultSlotTime = () => {
+  const date = new Date()
+  date.setHours(17, 30, 0, 0)
+  return date
+}
 const slotForm = ref({
-  dateValue: new Date(2026, 5, 3),
-  timeValue: new Date(2026, 5, 3, 17, 30),
+  dateValue: new Date(),
+  timeValue: defaultSlotTime(),
   duration: '90 мин',
-  status: 'available' as BookingSlot['status'],
 })
 const bookedSlotId = ref<number | null>(null)
+const visibleSlots = computed(() =>
+  props.role === 'instructor' ? bookingManagementSlots.value : availableSlots.value,
+)
 
 function durationText(duration: string) {
   return duration.replace('мин', 'минут')
@@ -28,12 +34,11 @@ function durationText(duration: string) {
 function statusLabel(status: BookingSlot["status"]) {
   const labels = {
     available: 'Свободно',
-    requested: 'На подтверждении',
+    requested: 'Ожидает подтверждения',
     confirmed: 'Подтверждено',
     rescheduleRequested: 'Перенос на подтверждении',
     rescheduled: 'Перенесено',
     cancelled: 'Отменено',
-    unavailable: 'Недоступно',
     completed: 'Проведено',
   }
 
@@ -93,10 +98,9 @@ function parseSlotTime(value: string, date = new Date(2026, 5, 3)) {
 function openAddSlot() {
   editingSlotId.value = null
   slotForm.value = {
-    dateValue: new Date(2026, 5, 3),
-    timeValue: new Date(2026, 5, 3, 17, 30),
+    dateValue: new Date(),
+    timeValue: defaultSlotTime(),
     duration: '90 мин',
-    status: 'available',
   }
   slotDialogOpen.value = true
 }
@@ -108,17 +112,17 @@ function openEditSlot(slot: BookingSlot) {
     dateValue,
     timeValue: parseSlotTime(slot.time, dateValue),
     duration: slot.duration,
-    status: slot.status === 'unavailable' ? 'unavailable' : 'available',
   }
   slotDialogOpen.value = true
 }
 
 function saveSlot() {
+  const currentSlot = editingSlotId.value ? slots.value.find((slot) => slot.id === editingSlotId.value) : null
   const nextSlot = {
     date: formatDate(slotForm.value.dateValue),
     time: formatTime(slotForm.value.timeValue),
     duration: slotForm.value.duration,
-    status: slotForm.value.status,
+    status: currentSlot?.status ?? 'available',
   }
 
   if (editingSlotId.value) {
@@ -130,7 +134,7 @@ function saveSlot() {
 }
 
 function bookSlot(slot: BookingSlot) {
-  slot.status = 'requested'
+  requestSlot(slot.id, 1, 'Не знаю / нужна консультация', '')
   bookedSlotId.value = slot.id
 }
 </script>
@@ -159,7 +163,7 @@ function bookSlot(slot: BookingSlot) {
     <section>
       <SectionHeader :title="props.role === 'instructor' ? 'Слоты для записи' : 'Свободное время'" />
       <div class="slot-grid">
-        <Card v-for="slot in slots" :key="slot.id" :class="['slot-card', slot.status]">
+        <Card v-for="slot in visibleSlots" :key="slot.id" :class="['slot-card', slot.status]">
           <template #content>
             <div class="slot-top">
               <div>
@@ -170,7 +174,7 @@ function bookSlot(slot: BookingSlot) {
             </div>
             <p>{{ durationText(slot.duration) }}</p>
 
-            <div v-if="props.role === 'instructor'" class="slot-actions">
+            <div v-if="props.role === 'instructor' && slot.status === 'available'" class="slot-actions">
               <Button label="Редактировать" size="small" @click="openEditSlot(slot)" />
               <Button label="Удалить" icon="pi pi-trash" size="small" severity="secondary" @click="removeSlot(slot.id)" />
             </div>
@@ -185,6 +189,9 @@ function bookSlot(slot: BookingSlot) {
           </template>
         </Card>
       </div>
+      <p v-if="visibleSlots.length === 0" class="status-message">
+        {{ props.role === 'instructor' ? 'Свободных слотов и новых заявок пока нет.' : 'Сейчас нет свободного времени для записи.' }}
+      </p>
     </section>
 
     <Card v-if="props.role === 'student' && bookedSlotId" class="flow-card">
@@ -209,17 +216,6 @@ function bookSlot(slot: BookingSlot) {
         <label>
           Длительность
           <Select v-model="slotForm.duration" :options="durationOptions" />
-        </label>
-        <label>
-          Статус
-          <Select v-model="slotForm.status" :options="statusOptions">
-            <template #value="{ value }">
-              {{ statusLabel(value) }}
-            </template>
-            <template #option="{ option }">
-              {{ statusLabel(option) }}
-            </template>
-          </Select>
         </label>
         <Button label="Сохранить слот" icon="pi pi-check" @click="saveSlot" />
       </div>
