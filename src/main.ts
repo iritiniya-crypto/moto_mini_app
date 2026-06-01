@@ -1,3 +1,6 @@
+import 'primeicons/primeicons.css'
+import './style.css'
+
 import { createApp } from 'vue'
 import App from './App.vue'
 
@@ -16,8 +19,7 @@ import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 
-import 'primeicons/primeicons.css'
-import './style.css'
+
 
 const app = createApp(App)
 

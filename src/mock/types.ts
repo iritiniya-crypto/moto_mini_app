@@ -1,7 +1,8 @@
 export type Skill = {
   id: number
   name: string
-  value: number
+  oldValue: number
+  newValue?: number
 }
 
 export type PaymentStatus = 'оплачено' | 'не оплачено' | 'частично оплачено'

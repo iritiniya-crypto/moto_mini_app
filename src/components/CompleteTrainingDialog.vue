@@ -187,14 +187,14 @@ function closeDialog() {
         <div class="skill-update-list">
           <label v-for="skill in selectedSkills" :key="skill.id" class="skill-edit-row skill-percent-row">
             <span>{{ skill.name }}</span>
+            <strong>{{ skill.oldValue }}%</strong>
             <input
-                v-model="skill.value"
+                v-model="skill.newValue"
                 class="skill-percent-input"
                 type="number"
                 min="0"
                 max="100"
             />
-            <strong>{{ skill.value }}%</strong>
             <Button icon="pi pi-trash" size="small" severity="secondary" @click="" />
           </label>
         </div>

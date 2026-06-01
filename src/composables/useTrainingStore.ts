@@ -88,7 +88,7 @@ export function useTrainingStore() {
     if (student && skills) {
       student.skills = skills.map((skill) => ({
         ...skill,
-        value: Math.min(100, Math.max(0, Number(skill.value) || 0)),
+        value: Math.min(100, Math.max(0, Number(skill.oldValue) || 0)),
       }))
     }
   }

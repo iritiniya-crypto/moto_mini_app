@@ -5,7 +5,6 @@ import LessonCard from '../components/LessonCard.vue'
 import MetricCard from '../components/MetricCard.vue'
 import SectionHeader from '../components/SectionHeader.vue'
 import SkillProgress from '../components/SkillProgress.vue'
-import studentAvatar from '../assets/student-avatar.png'
 import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
 import { newStudents as mockNewStudents } from '../mock/trainingContent'
@@ -348,7 +347,7 @@ function addSkill() {
   editableSkills.value.push({
     id: Date.now(),
     name,
-    value: 0,
+    oldValue: 0,
   })
   customSkill.value = ''
 }
@@ -363,7 +362,7 @@ function removeSkill(id: number) {
     <Card class="hero-card profile">
       <template #content>
         <div class="student-top">
-          <Avatar :image="studentAvatar" size="xlarge" shape="circle" />
+          <Avatar image="student-avatar.png" size="xlarge" shape="circle" />
           <div>
             <h1>{{ student.name }}</h1>
             <p>{{ student.level }}</p>
@@ -459,7 +458,7 @@ function removeSkill(id: number) {
         >
           <template #content>
             <div class="student-top">
-              <Avatar :image="studentAvatar" shape="circle" />
+              <Avatar image="student-avatar.png" shape="circle" />
               <div>
                 <h3>{{ student.name }}</h3>
                 <span>{{ student.level }} · {{ student.completedTrainingsCount }} тренировок</span>
@@ -491,7 +490,7 @@ function removeSkill(id: number) {
     <Dialog v-model:visible="studentDialogOpen" modal header="Карточка ученика" class="moto-dialog student-card-dialog" :draggable="false">
       <div class="form-stack student-dialog-content">
         <div class="student-dialog-header">
-          <Avatar :image="studentAvatar" class="student-dialog-avatar" shape="circle" />
+          <Avatar image="student-avatar.png" class="student-dialog-avatar" shape="circle" />
           <div>
             <h3>{{ selectedStudent.name }}</h3>
             <span>{{ telegramHandle(selectedStudent) }}</span>
@@ -567,7 +566,7 @@ function removeSkill(id: number) {
           <label v-for="skill in editableSkills" :key="skill.id" class="skill-edit-row skill-percent-row">
             <span>{{ skill.name }}</span>
             <input
-              v-model.number="skill.value"
+              v-model.number="skill.oldValue"
               class="skill-percent-input"
               type="number"
               min="0"

@@ -11,9 +11,9 @@ defineProps<{
     <template #content>
       <div class="skill-top">
         <strong>{{ skill.name }}</strong>
-        <b>{{ skill.value }}%</b>
+        <b>{{ skill.oldValue }}%</b>
       </div>
-      <ProgressBar :value="skill.value" :show-value="false" />
+      <ProgressBar :value="skill.oldValue" :show-value="false" />
     </template>
   </Card>
 </template>

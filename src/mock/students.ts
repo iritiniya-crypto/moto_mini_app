@@ -1,16 +1,5 @@
-import type { Student, Skill } from './types'
-
-export const baseSkills: Skill[] = [
-  { id: 1, name: 'Овал', value: 70 },
-  { id: 2, name: 'Восьмерка', value: 60 },
-  { id: 3, name: 'Змейка', value: 65 },
-  { id: 4, name: 'Торможение', value: 64 },
-  { id: 5, name: 'Работа со сцеплением', value: 81 },
-  { id: 6, name: 'Медленная езда', value: 76 },
-  { id: 7, name: 'Развороты', value: 58 },
-  { id: 8, name: 'Взгляд в поворот', value: 72 },
-  { id: 9, name: 'Движение в городе', value: 45 },
-]
+import type { Student } from './types'
+import {skills} from "./skills.ts";
 
 export const students: Student[] = [
   {
@@ -19,10 +8,10 @@ export const students: Student[] = [
     status: 'базовый контроль мотоцикла',
     level: 'Уверенный старт',
     completedTrainingsCount: 8,
-    nextLesson: '28 мая, 18:30 · развороты и траектория',
+    nextLesson: '28 мая, 18:30',
     avatar: 'АМ',
     focus: 'держать взгляд выше и мягче работать сцеплением',
-    skills: [...baseSkills],
+    skills: [...skills],
     telegramUsername: '@alinamoro',
     trainingPackage: {
       total: 4,
@@ -37,10 +26,10 @@ export const students: Student[] = [
     status: 'вход в поворот',
     level: 'Средний',
     completedTrainingsCount: 13,
-    nextLesson: '29 мая, 11:00 · торможение',
+    nextLesson: '29 мая, 11:00',
     avatar: 'ИК',
     focus: 'дозировать передний тормоз без зажима рук',
-    skills: [...baseSkills],
+    skills: [...skills],
     telegramUsername: '@ilyakovalev',
     trainingPackage: {
       total: 3,
@@ -55,10 +44,10 @@ export const students: Student[] = [
     status: 'баланс и сцепление',
     level: 'Новичок',
     completedTrainingsCount: 4,
-    nextLesson: '30 мая, 16:00 · медленная езда',
+    nextLesson: '30 мая, 16:00',
     avatar: 'МД',
     focus: 'стабильная посадка и точка схватывания',
-    skills: [...baseSkills],
+    skills: [...skills],
     telegramUsername: '@maria.dani',
     trainingPackage: {
       total: 4,

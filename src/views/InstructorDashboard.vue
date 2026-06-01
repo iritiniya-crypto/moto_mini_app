@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import CompleteTrainingDialog from '../components/CompleteTrainingDialog.vue'
 import SectionHeader from '../components/SectionHeader.vue'
-import studentAvatar from '../assets/student-avatar.png'
 import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
 import { standardLocations } from '../mock/booking'
@@ -95,7 +94,7 @@ function reportForSlot(slot: BookingSlot) {
   return trainingReports.value.find((report) => report.slotId === slot.id) || null
 }
 
-const requests = computed(() => 
+const requests = computed(() =>
   requestedSlots.value.map((slot) => {
     return { ...slot, student: studentName(slot) }
   })
@@ -299,7 +298,7 @@ function openLocation(url: string) {
         <Card v-for="request in requests" :key="request.id" class="request-card">
           <template #content>
             <div class="request-top">
-              <Avatar :image="studentAvatar" shape="circle" />
+              <Avatar image="student-avatar.png" shape="circle" />
               <div>
                 <h3>{{ request.student }}</h3>
                 <span>{{ request.date }} · {{ request.time }} · {{ durationText(request.duration) }}</span>
