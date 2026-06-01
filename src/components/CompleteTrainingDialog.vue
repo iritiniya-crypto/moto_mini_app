@@ -121,7 +121,7 @@ function saveReport() {
 }
 
 const isFormValid = computed(() => {
-  return selectedSkills.value.length > 0 && improved.value.trim() && nextFocus.value.trim()
+  return selectedSkills.value.length > 0
 })
 
 function closeDialog() {
