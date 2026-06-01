@@ -168,10 +168,6 @@ function saveStudentChanges() {
   studentSaveMessage.value = 'Изменения сохранены'
 }
 
-function clampSkillValue(skill: Skill) {
-  skill.value = Math.min(100, Math.max(0, Number(skill.value) || 0))
-}
-
 function openReportSelection() {
   reportSelectionOpen.value = true
 }
@@ -352,7 +348,7 @@ function addSkill() {
   editableSkills.value.push({
     id: Date.now(),
     name,
-    value: 20,
+    value: 0,
   })
   customSkill.value = ''
 }
@@ -576,9 +572,7 @@ function removeSkill(id: number) {
               type="number"
               min="0"
               max="100"
-              @input="clampSkillValue(skill)"
             />
-            <strong>{{ skill.value }}%</strong>
             <Button icon="pi pi-trash" size="small" severity="secondary" @click="removeSkill(skill.id)" />
           </label>
         </div>

@@ -2,8 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
-import { availableSkills } from '../mock/skills'
-import type { BookingSlot, Student } from '../mock/types'
+import { skills } from '../mock/skills'
+import type {BookingSlot, Skill, Student} from '../mock/types'
 
 interface Props {
   open: boolean
@@ -22,19 +22,13 @@ const emit = defineEmits<Emits>()
 const { completeSlot } = useBookingStore()
 const { createTrainingReport } = useTrainingStore()
 
-const selectedSkills = ref<string[]>([])
+const selectedSkills = ref<Skill[]>([])
 const skillImprovements = ref<Record<string, string>>({})
 const improved = ref('')
 const nextFocus = ref('')
 const levelUpdate = ref<string | null>(null)
 const isSaving = ref(false)
 
-const improvementOptions = [
-  'Без изменений',
-  'Немного лучше',
-  'Заметно лучше',
-  'Нужно повторить',
-]
 const levelOptions = ['Новичок', 'База', 'Уверенный старт', 'Город', 'Профи']
 
 watch(
@@ -53,10 +47,10 @@ watch(
 )
 
 watch(selectedSkills, (skills) => {
-  const nextImprovements: Record<string, string> = {}
+  const nextImprovements: Record<number, string> = {}
 
   skills.forEach((skill) => {
-    nextImprovements[skill] = skillImprovements.value[skill] || 'Без изменений'
+    nextImprovements[skill.id] = skillImprovements.value[skill.id] || 'Без изменений'
   })
 
   skillImprovements.value = nextImprovements
@@ -75,8 +69,8 @@ const dialogVisible = computed({
 function initializeSkillImprovements() {
   const improvements: Record<string, string> = {}
   selectedSkills.value.forEach((skill) => {
-    if (!skillImprovements.value[skill]) {
-      improvements[skill] = 'Без изменений'
+    if (!skillImprovements.value[skill.id]) {
+      improvements[skill.id] = 'Без изменений'
     }
   })
   skillImprovements.value = { ...skillImprovements.value, ...improvements }
@@ -96,7 +90,7 @@ function saveReport() {
       date: props.slot.date,
       duration: props.slot.duration,
       location: props.slot.finalLocation || 'Не указано',
-      trainedSkills: [...selectedSkills.value],
+      trainedSkills: (selectedSkills.value.map((s) => s.name)),
       improved: improved.value.trim(),
       nextFocus: nextFocus.value.trim(),
       skillUpdates: { ...skillImprovements.value },
@@ -161,8 +155,8 @@ function closeDialog() {
       <section>
         <label class="field-label">Что тренировали</label>
         <div class="skill-check-grid">
-          <label v-for="skill in availableSkills" :key="skill.id" class="skill-check-item">
-            <input v-model="selectedSkills" type="checkbox" :value="skill.name" />
+          <label v-for="skill in skills" :key="skill.id" class="skill-check-item">
+            <input v-model="selectedSkills" type="checkbox" :value="skill" />
             <span>{{ skill.name }}</span>
           </label>
         </div>
@@ -191,9 +185,17 @@ function closeDialog() {
       <section v-if="selectedSkills.length > 0">
         <label class="field-label">Оценка прогресса навыков</label>
         <div class="skill-update-list">
-          <label v-for="skill in selectedSkills" :key="skill" class="skill-update-row">
-            <span>{{ skill }}</span>
-            <Select v-model="skillImprovements[skill]" :options="improvementOptions" />
+          <label v-for="skill in selectedSkills" :key="skill.id" class="skill-edit-row skill-percent-row">
+            <span>{{ skill.name }}</span>
+            <input
+                v-model="skill.value"
+                class="skill-percent-input"
+                type="number"
+                min="0"
+                max="100"
+            />
+            <strong>{{ skill.value }}%</strong>
+            <Button icon="pi pi-trash" size="small" severity="secondary" @click="" />
           </label>
         </div>
       </section>

@@ -12,16 +12,6 @@ export function useTrainingStore() {
     return studentsData.value.find((s) => s.id === studentId)
   }
 
-  function getSkillDelta(improvement: string): number {
-    const improvements: Record<string, number> = {
-      'Без изменений': 0,
-      'Немного лучше': 5,
-      'Заметно лучше': 10,
-      'Нужно повторить': 0,
-    }
-    return improvements[improvement] || 0
-  }
-
   function createTrainingReport(report: Omit<TrainingReport, 'id' | 'createdAt'>) {
     const student = getStudent(report.studentId)
     if (!student) {
@@ -77,16 +67,6 @@ export function useTrainingStore() {
       }
     } else {
       student.trainingHistory.unshift(history)
-    }
-
-    if (student.skills && existingHistoryIndex < 0) {
-      Object.entries(report.skillUpdates).forEach(([skillName, improvement]) => {
-        const skill = student.skills!.find((s) => s.name === skillName)
-        if (skill) {
-          const delta = getSkillDelta(improvement)
-          skill.value = Math.min(100, Math.max(0, skill.value + delta))
-        }
-      })
     }
 
     if (report.levelUpdate) {
