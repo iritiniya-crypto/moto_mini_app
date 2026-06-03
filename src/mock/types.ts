@@ -1,5 +1,6 @@
 export type Skill = {
   id: number
+  apiId?: string
   name: string
   oldValue: number
   newValue?: number
@@ -11,10 +12,14 @@ export type TrainingPackage = {
   total: number
   completed: number
   paymentStatus: PaymentStatus
+  startedAt?: string
+  endedAt?: string
+  isActive?: boolean
 }
 
 export type Student = {
   id: number
+  apiId?: string
   name: string
   status: string
   level: string
@@ -30,7 +35,9 @@ export type Student = {
 
 export type TrainingHistory = {
   id: number
+  apiId?: string
   slotId?: number
+  slotApiId?: string
   date: string
   duration: string
   location?: string
@@ -70,6 +77,7 @@ export type Video = {
 
 export type TrainingReport = {
   id: number
+  apiId?: string
   studentId: number
   slotId: number
   date: string
@@ -90,10 +98,18 @@ export type AvailableSkill = {
 
 export type BookingSlot = {
   id: number
+  apiId?: string
   date: string
   time: string
   duration: string
+  previousDate?: string
+  previousTime?: string
+  previousDuration?: string
+  title?: string
+  location?: string
+  studentName?: string
   studentId?: number
+  studentApiId?: string
   preference?: string
   studentComment?: string
   finalLocation?: string
@@ -102,9 +118,8 @@ export type BookingSlot = {
   status:
     | 'available'
     | 'requested'
+    | 'reschedule'
     | 'confirmed'
     | 'completed'
-    | 'rescheduleRequested'
-    | 'rescheduled'
     | 'cancelled'
 }

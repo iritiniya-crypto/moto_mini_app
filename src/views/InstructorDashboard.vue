@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import CompleteTrainingDialog from '../components/CompleteTrainingDialog.vue'
 import SectionHeader from '../components/SectionHeader.vue'
 import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
 import { standardLocations } from '../mock/booking'
-import { rescheduleRequests } from '../mock/trainingContent'
 import type { BookingSlot, Student } from '../mock/types'
 
-const { confirmSlot, declineSlot, requestedSlots, slots } = useBookingStore()
-const { getStudent, getStudentTrainingHistory, trainingReports } = useTrainingStore()
-type CalendarFilter = 'all' | 'requested' | 'confirmed' | 'completed'
+const { confirmSlot, declineSlot, loadInstructorCalendar, requestedSlots, rescheduleSlots, slots } = useBookingStore()
+const { getStudent, getStudentTrainingHistory, trainingReports, updateStudent } = useTrainingStore()
+type CalendarFilter = 'all' | 'available' | 'requested' | 'reschedule' | 'confirmed' | 'completed'
 type CalendarTraining = BookingSlot & {
   student: string
   statusText: string
@@ -24,7 +23,9 @@ const calendarFilter = ref<CalendarFilter>('all')
 const selectedReportTraining = ref<CalendarTraining | null>(null)
 const calendarFilters: { label: string; value: CalendarFilter }[] = [
   { label: 'Все', value: 'all' },
+  { label: 'Свободно', value: 'available' },
   { label: 'Ожидают', value: 'requested' },
+  { label: 'Переносы', value: 'reschedule' },
   { label: 'Подтверждено', value: 'confirmed' },
   { label: 'Проведено', value: 'completed' },
 ]
@@ -48,7 +49,7 @@ function todayLabel() {
 }
 
 function studentName(slot: BookingSlot) {
-  return getStudent(slot.studentId || 0)?.name || 'Ученик'
+  return slot.studentName || getStudent(slot.studentId || 0)?.name || 'Ученик'
 }
 
 function parseSlotDateTime(slot: Pick<BookingSlot, 'date' | 'time'>) {
@@ -59,8 +60,16 @@ function parseSlotDateTime(slot: Pick<BookingSlot, 'date' | 'time'>) {
 }
 
 function statusText(status: BookingSlot['status']) {
+  if (status === 'available') {
+    return 'свободно'
+  }
+
   if (status === 'requested') {
     return 'ожидает подтверждения'
+  }
+
+  if (status === 'reschedule') {
+    return 'запрос на перенос'
   }
 
   if (status === 'confirmed') {
@@ -79,7 +88,7 @@ function statusSeverity(status: BookingSlot['status']): 'success' | 'warn' | 'se
     return 'success'
   }
 
-  if (status === 'requested') {
+  if (status === 'requested' || status === 'reschedule') {
     return 'warn'
   }
 
@@ -100,16 +109,22 @@ const requests = computed(() =>
   })
 )
 
+const reschedules = computed(() =>
+  rescheduleSlots.value.map((slot) => {
+    return { ...slot, student: studentName(slot) }
+  })
+)
+
 const todaySchedule = computed(() => {
   const today = todayLabel()
 
   return slots.value
-    .filter((slot) => slot.date === today && (slot.status === 'requested' || slot.status === 'confirmed'))
+    .filter((slot) => slot.date === today && (slot.status === 'requested' || slot.status === 'reschedule' || slot.status === 'confirmed'))
     .map((slot) => ({
       ...slot,
       student: studentName(slot),
-      statusText: slot.status === 'requested' ? 'ожидает подтверждения' : 'подтверждено',
-      statusSeverity: slot.status === 'requested' ? 'warn' : 'success',
+      statusText: statusText(slot.status),
+      statusSeverity: statusSeverity(slot.status),
       place: slot.finalLocation || slot.preference || 'Локация не выбрана',
     }))
     .sort((a, b) => a.time.localeCompare(b.time))
@@ -117,11 +132,11 @@ const todaySchedule = computed(() => {
 
 const calendarTrainings = computed<CalendarTraining[]>(() =>
   slots.value
-    .filter((slot) => ['requested', 'confirmed', 'completed'].includes(slot.status))
+    .filter((slot) => ['available', 'requested', 'reschedule', 'confirmed', 'completed'].includes(slot.status))
     .filter((slot) => calendarFilter.value === 'all' || slot.status === calendarFilter.value)
     .map((slot) => ({
       ...slot,
-      student: studentName(slot),
+      student: slot.status === 'available' ? 'Свободное окно' : studentName(slot),
       statusText: statusText(slot.status),
       statusSeverity: statusSeverity(slot.status),
       history: historyForSlot(slot),
@@ -144,9 +159,7 @@ const calendarGroups = computed(() => {
   return Array.from(groups.entries()).map(([date, trainings]) => ({ date, trainings }))
 })
 
-const moves = ref(rescheduleRequests.map((item) => ({ ...item, status: 'new' })))
 const confirmedRequest = ref<(BookingSlot & { student: string }) | null>(null)
-const confirmedMove = ref<(typeof moves.value)[number] | null>(null)
 const confirmDialogOpen = ref(false)
 const requestToConfirm = ref<(BookingSlot & { student: string }) | null>(null)
 const completeTrainingDialogOpen = ref(false)
@@ -169,6 +182,16 @@ function locationUrlFor(locationName: string) {
   return standardLocations.find((location) => location.name === locationName)?.locationUrl ?? ''
 }
 
+function rescheduleTimeText(slot: BookingSlot) {
+  const nextTime = `${slot.date} ${slot.time}`
+
+  if (!slot.previousDate || !slot.previousTime) {
+    return nextTime
+  }
+
+  return `${slot.previousDate} ${slot.previousTime} → ${nextTime}`
+}
+
 function syncFinalLocationUrl() {
   if (finalLocationForm.value.locationChoice !== 'Ввести вручную') {
     finalLocationForm.value.locationUrl = locationUrlFor(finalLocationForm.value.locationChoice)
@@ -188,7 +211,7 @@ function openConfirmRequest(request: BookingSlot & { student: string }) {
   confirmDialogOpen.value = true
 }
 
-function confirmRequest() {
+async function confirmRequest() {
   if (!requestToConfirm.value) {
     return
   }
@@ -200,7 +223,8 @@ function confirmRequest() {
     : finalLocationForm.value.locationChoice
   const finalLocationUrl = finalLocationForm.value.locationUrl || undefined
   const instructorComment = finalLocationForm.value.instructorComment
-  confirmSlot(request.id, finalLocation, finalLocationUrl, instructorComment)
+  await confirmSlot(request.id, finalLocation, finalLocationUrl, instructorComment)
+  await loadInstructorCalendar()
   confirmedRequest.value = {
     ...request,
     status: 'confirmed',
@@ -211,22 +235,19 @@ function confirmRequest() {
   confirmDialogOpen.value = false
 }
 
-function declineRequest(request: BookingSlot & { student: string }) {
-  declineSlot(request.id)
-}
-
-function confirmMove(move: (typeof moves.value)[number]) {
-  move.status = 'confirmed'
-  confirmedMove.value = move
-}
-
-function declineMove(move: (typeof moves.value)[number]) {
-  move.status = 'declined'
+async function declineRequest(request: BookingSlot & { student: string }) {
+  await declineSlot(request.id)
+  await loadInstructorCalendar()
 }
 
 function openCompleteTrainingDialog(training: BookingSlot & { student: string }) {
   trainingToComplete.value = training
-  studentForTraining.value = getStudent(training.studentId || 0) || null
+  const existingStudent = getStudent(training.studentId || 0)
+  studentForTraining.value = existingStudent || updateStudent(training.studentId || Date.now(), {
+    apiId: training.studentApiId,
+    name: training.student,
+    level: 'Новичок',
+  })
   completeTrainingDialogOpen.value = true
 }
 
@@ -247,6 +268,10 @@ function handleTrainingCompleted() {
 function openLocation(url: string) {
   window.open(url, '_blank')
 }
+
+onMounted(() => {
+  loadInstructorCalendar()
+})
 
 </script>
 
@@ -334,51 +359,36 @@ function openLocation(url: string) {
     <section>
       <SectionHeader title="Запросы на перенос" />
       <div class="stack tight">
-        <Card v-for="move in moves" :key="move.id" class="request-card">
+        <Card v-for="move in reschedules" :key="move.id" class="request-card">
           <template #content>
-            <div class="note-list">
+            <div class="request-top">
+              <Avatar image="student-avatar.png" shape="circle" />
               <div>
-                <span>{{ move.student }}</span>
-                <strong>{{ move.oldTime }} → {{ move.newTime }}</strong>
+                <h3>{{ move.student }}</h3>
+                <span>{{ rescheduleTimeText(move) }} · {{ durationText(move.duration) }}</span>
+                <small v-if="move.studentComment">Комментарий: "{{ move.studentComment }}"</small>
               </div>
-              <div>
-                <span>Место</span>
-                <strong>{{ move.place }}</strong>
-              </div>
+              <Tag value="Запрос на перенос" severity="warn" />
             </div>
-            <p v-if="move.sameDay" class="status-message">Перенос в день занятия: оплата за урок списывается.</p>
-            <div v-if="move.status === 'new'" class="slot-actions">
-              <Button label="Подтвердить перенос" icon="pi pi-check" size="small" @click="confirmMove(move)" />
-              <Button label="Отклонить" icon="pi pi-times" size="small" severity="secondary" @click="declineMove(move)" />
+            <div class="slot-actions">
+              <Button label="Подтвердить перенос" icon="pi pi-check" size="small" @click="openConfirmRequest(move)" />
+              <Button label="Отклонить" icon="pi pi-times" size="small" severity="secondary" @click="declineRequest(move)" />
             </div>
-            <Tag
-              v-else
-              :value="move.status === 'confirmed' ? 'Перенос подтвержден' : 'Перенос отклонен'"
-              :severity="move.status === 'confirmed' ? 'success' : 'secondary'"
-            />
           </template>
         </Card>
       </div>
     </section>
 
-    <Card v-if="confirmedRequest || confirmedMove" class="telegram-card">
+    <Card v-if="confirmedRequest" class="telegram-card">
       <template #content>
         <SectionHeader title="Уведомление ученику" />
-        <div v-if="confirmedRequest" class="telegram-preview">
+        <div class="telegram-preview">
           <i class="pi pi-telegram" />
           <div>
             <strong>Тренировка подтверждена</strong>
             <span>{{ confirmedRequest.date }} · {{ confirmedRequest.time }} · {{ durationText(confirmedRequest.duration) }}</span>
             <span>Место: {{ confirmedRequest.finalLocation }}</span>
             <span>Комментарий Никиты: {{ confirmedRequest.instructorComment }}</span>
-          </div>
-        </div>
-        <div v-if="confirmedMove" class="telegram-preview">
-          <i class="pi pi-telegram" />
-          <div>
-            <strong>Тренировка перенесена</strong>
-            <span>Новое время: {{ confirmedMove.newTime }}</span>
-            <span>{{ confirmedMove.place }}</span>
           </div>
         </div>
       </template>
@@ -430,15 +440,24 @@ function openLocation(url: string) {
                   <span v-if="training.studentComment">Комментарий: {{ training.studentComment }}</span>
                 </div>
 
+                <div v-else-if="training.status === 'reschedule'" class="calendar-training-details">
+                  <span>{{ rescheduleTimeText(training) }}</span>
+                  <span v-if="training.studentComment">Комментарий: {{ training.studentComment }}</span>
+                </div>
+
                 <div v-else-if="training.status === 'confirmed'" class="calendar-training-details">
                   <span>Локация: {{ training.finalLocation || 'Локация по договоренности' }}</span>
+                </div>
+
+                <div v-else-if="training.status === 'available'" class="calendar-training-details">
+                  <span>{{ training.location || 'Окно доступно для записи' }}</span>
                 </div>
 
                 <div v-else class="calendar-training-details">
                   <span>Что тренировали: {{ training.history?.topics.join(', ') || training.report?.trainedSkills.join(', ') || 'Не указано' }}</span>
                 </div>
 
-                <div v-if="training.status === 'requested'" class="slot-actions">
+                <div v-if="training.status === 'requested' || training.status === 'reschedule'" class="slot-actions">
                   <Button label="Подтвердить" icon="pi pi-check" size="small" @click="openConfirmRequest(training)" />
                   <Button label="Отклонить" icon="pi pi-times" size="small" severity="secondary" @click="declineRequest(training)" />
                 </div>
@@ -456,7 +475,7 @@ function openLocation(url: string) {
                 </div>
 
                 <Button
-                  v-else
+                  v-else-if="training.status === 'completed'"
                   label="Открыть отчет"
                   icon="pi pi-file"
                   size="small"
@@ -519,7 +538,10 @@ function openLocation(url: string) {
         <div class="booking-summary">
           <span>{{ requestToConfirm.student }}</span>
           <strong>{{ requestToConfirm.date }} · {{ requestToConfirm.time }} · {{ durationText(requestToConfirm.duration) }}</strong>
-          <span>Пожелание: {{ requestToConfirm.preference || 'Не знаю / нужна консультация' }}</span>
+          <span v-if="requestToConfirm.status === 'reschedule'">
+            {{ rescheduleTimeText(requestToConfirm) }}
+          </span>
+          <span v-else>Пожелание: {{ requestToConfirm.preference || 'Не знаю / нужна консультация' }}</span>
           <span v-if="requestToConfirm.studentComment">Комментарий: {{ requestToConfirm.studentComment }}</span>
         </div>
 
@@ -548,7 +570,11 @@ function openLocation(url: string) {
             placeholder="Например: встречаемся у въезда на площадку, возьмите закрытую обувь"
           />
         </label>
-        <Button label="Подтвердить запись" icon="pi pi-check" @click="confirmRequest" />
+        <Button
+          :label="requestToConfirm.status === 'reschedule' ? 'Подтвердить перенос' : 'Подтвердить запись'"
+          icon="pi pi-check"
+          @click="confirmRequest"
+        />
       </div>
     </Dialog>
   </section>

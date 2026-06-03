@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { TEST_USER_ID } from '../api/client'
+import { numericId } from '../api/normalizers'
 import SectionHeader from '../components/SectionHeader.vue'
 import { useBookingStore } from '../composables/useBookingStore'
 import type { BookingSlot } from '../mock/types'
@@ -8,7 +10,8 @@ const props = defineProps<{
   role: 'student' | 'instructor'
 }>()
 
-const { addSlot, bookingManagementSlots, removeSlot, requestSlot, updateSlot, availableSlots, slots } = useBookingStore()
+const { addSlot, bookingManagementSlots, loadBookingSlots, removeSlot, requestSlot, updateSlot, availableSlots, slots } = useBookingStore()
+const currentStudentId = TEST_USER_ID ? numericId(TEST_USER_ID, 1) : 1
 const slotDialogOpen = ref(false)
 const editingSlotId = ref<number | null>(null)
 const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
@@ -35,9 +38,8 @@ function statusLabel(status: BookingSlot["status"]) {
   const labels = {
     available: 'Свободно',
     requested: 'Ожидает подтверждения',
+    reschedule: 'Запрос на перенос',
     confirmed: 'Подтверждено',
-    rescheduleRequested: 'Перенос на подтверждении',
-    rescheduled: 'Перенесено',
     cancelled: 'Отменено',
     completed: 'Проведено',
   }
@@ -46,11 +48,11 @@ function statusLabel(status: BookingSlot["status"]) {
 }
 
 function statusSeverity(status: BookingSlot['status']) {
-  if (status === 'confirmed' || status === 'rescheduled' || status === 'completed') {
+  if (status === 'confirmed' || status === 'completed') {
     return 'success'
   }
 
-  if (status === 'requested' || status === 'rescheduleRequested') {
+  if (status === 'requested' || status === 'reschedule') {
     return 'warn'
   }
 
@@ -116,7 +118,7 @@ function openEditSlot(slot: BookingSlot) {
   slotDialogOpen.value = true
 }
 
-function saveSlot() {
+async function saveSlot() {
   const currentSlot = editingSlotId.value ? slots.value.find((slot) => slot.id === editingSlotId.value) : null
   const nextSlot = {
     date: formatDate(slotForm.value.dateValue),
@@ -126,17 +128,28 @@ function saveSlot() {
   }
 
   if (editingSlotId.value) {
-    updateSlot(editingSlotId.value, nextSlot)
+    await updateSlot(editingSlotId.value, nextSlot)
   } else {
-    addSlot(nextSlot)
+    await addSlot(nextSlot)
   }
+  await loadBookingSlots()
   slotDialogOpen.value = false
 }
 
-function bookSlot(slot: BookingSlot) {
-  requestSlot(slot.id, 1, 'Не знаю / нужна консультация', '')
+async function bookSlot(slot: BookingSlot) {
+  await requestSlot(slot.id, currentStudentId, 'Не знаю / нужна консультация', '', 'requested', TEST_USER_ID)
+  await loadBookingSlots()
   bookedSlotId.value = slot.id
 }
+
+async function deleteSlot(id: number) {
+  await removeSlot(id)
+  await loadBookingSlots()
+}
+
+onMounted(() => {
+  loadBookingSlots()
+})
 </script>
 
 <template>
@@ -176,7 +189,7 @@ function bookSlot(slot: BookingSlot) {
 
             <div v-if="props.role === 'instructor' && slot.status === 'available'" class="slot-actions">
               <Button label="Редактировать" size="small" @click="openEditSlot(slot)" />
-              <Button label="Удалить" icon="pi pi-trash" size="small" severity="secondary" @click="removeSlot(slot.id)" />
+              <Button label="Удалить" icon="pi pi-trash" size="small" severity="secondary" @click="deleteSlot(slot.id)" />
             </div>
 
             <Button

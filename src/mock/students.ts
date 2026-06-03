@@ -1,9 +1,10 @@
 import type { Student } from './types'
 import {skills} from "./skills.ts";
+import { TEST_USER_ID } from '../api/client.ts';
 
 export const students: Student[] = [
   {
-    id: 1,
+    id: TEST_USER_ID,
     name: 'Алина Морозова',
     status: 'базовый контроль мотоцикла',
     level: 'Уверенный старт',

@@ -311,14 +311,3 @@ export const newStudents = [
     date: '26 мая',
   },
 ]
-
-export const rescheduleRequests = [
-  {
-    id: 1,
-    student: 'Илья Ковалев',
-    oldTime: '30 мая · 16:00',
-    newTime: '30 мая · 19:00',
-    place: 'Площадка Север',
-    sameDay: true,
-  },
-]

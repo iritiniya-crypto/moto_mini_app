@@ -1,9 +1,122 @@
 import { computed, ref } from 'vue'
+import {
+  cancelBookingSlot,
+  confirmBookingSlot,
+  createBookingSlot,
+  declineBookingSlot,
+  deleteBookingSlot,
+  fetchBookingSlots,
+  fetchInstructorCalendar,
+  normalizeBookingSlots,
+  requestBookingSlot,
+  rescheduleBookingSlot,
+  slotPatchToPayload,
+  slotToCreatePayload,
+  updateBookingSlot,
+} from '../api/bookingSlots'
+import { TEST_USER_ID } from '../api/client'
+import { normalizeBookingSlot, type ApiRecord } from '../api/normalizers'
 import { bookingSlots } from '../mock/booking'
 import type { BookingSlot } from '../mock/types'
 
 const slots = ref<BookingSlot[]>(bookingSlots.map((slot) => ({ ...slot })))
 const activeStudentSlotId = ref<number | null>(null)
+const isBookingLoading = ref(false)
+const bookingError = ref('')
+
+function definedPatch<T extends object>(patch: T): Partial<T> {
+  return Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined && value !== '')) as Partial<T>
+}
+
+function isApiRecord(value: unknown): value is ApiRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function looksLikeSlot(value: unknown): value is ApiRecord {
+  if (!isApiRecord(value)) {
+    return false
+  }
+
+  return (
+    value.id !== undefined &&
+    (value.startsAt !== undefined ||
+      value.starts_at !== undefined ||
+      value.durationMinutes !== undefined ||
+      value.duration_minutes !== undefined ||
+      value.status !== undefined)
+  )
+}
+
+function normalizeSlotsFromResponse(payload: unknown) {
+  const candidates: ApiRecord[] = []
+  const addCandidate = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(addCandidate)
+      return
+    }
+
+    if (looksLikeSlot(value)) {
+      candidates.push(value)
+    }
+  }
+
+  addCandidate(payload)
+
+  if (isApiRecord(payload)) {
+    ;[
+      'slot',
+      'bookingSlot',
+      'booking_slot',
+      'oldSlot',
+      'old_slot',
+      'previousSlot',
+      'previous_slot',
+      'availableSlot',
+      'available_slot',
+      'newSlot',
+      'new_slot',
+      'targetSlot',
+      'target_slot',
+      'confirmedSlot',
+      'confirmed_slot',
+      'rescheduleSlot',
+      'reschedule_slot',
+      'slots',
+      'bookingSlots',
+      'booking_slots',
+      'updatedSlots',
+      'updated_slots',
+    ].forEach((key) => addCandidate(payload[key]))
+  }
+
+  const seen = new Set<string>()
+
+  return candidates
+    .map((candidate, index) => normalizeBookingSlot(candidate, index))
+    .filter((slot) => {
+      const key = slot.apiId || String(slot.id)
+
+      if (seen.has(key)) {
+        return false
+      }
+
+      seen.add(key)
+      return true
+    })
+}
+
+function mergeSlotLists(baseSlots: BookingSlot[], overrideSlots: BookingSlot[]) {
+  const merged = new Map<string, BookingSlot>()
+  const keyForSlot = (slot: BookingSlot) => slot.apiId || String(slot.id)
+
+  baseSlots.forEach((slot) => merged.set(keyForSlot(slot), slot))
+  overrideSlots.forEach((slot) => {
+    const key = keyForSlot(slot)
+    merged.set(key, { ...merged.get(key), ...slot })
+  })
+
+  return Array.from(merged.values())
+}
 
 export function useBookingStore() {
   const activeStudentSlot = computed(() => slots.value.find((slot) => slot.id === activeStudentSlotId.value))
@@ -15,6 +128,8 @@ export function useBookingStore() {
 
   const requestedSlots = computed(() => slots.value.filter((slot) => slot.status === 'requested'))
 
+  const rescheduleSlots = computed(() => slots.value.filter((slot) => slot.status === 'reschedule'))
+
   const confirmedSlots = computed(() =>
     slots.value.filter((slot) => slot.status === 'confirmed'),
   )
@@ -23,28 +138,121 @@ export function useBookingStore() {
     return slots.value.filter(
       (slot) =>
         slot.studentId === studentId &&
-        (slot.status === 'requested' || slot.status === 'confirmed' || slot.status === 'rescheduleRequested' || slot.status === 'rescheduled'),
+        (slot.status === 'requested' || slot.status === 'reschedule' || slot.status === 'confirmed'),
     )
   }
 
-  function addSlot(slot: Omit<BookingSlot, 'id'>) {
-    slots.value.unshift({
-      id: Date.now(),
-      ...slot,
-    })
-  }
+  function upsertSlot(slot: BookingSlot) {
+    const index = slots.value.findIndex((item) => item.id === slot.id)
 
-  function updateSlot(id: number, patch: Partial<BookingSlot>) {
-    const slot = slots.value.find((item) => item.id === id)
-
-    if (slot) {
-      Object.assign(slot, patch)
+    if (index >= 0) {
+      slots.value[index] = { ...slots.value[index], ...slot }
+      return slots.value[index]
     }
 
+    slots.value.unshift(slot)
     return slot
   }
 
-  function removeSlot(id: number) {
+  function upsertSlotsFromResponse(payload: unknown, fallbackSlot?: BookingSlot) {
+    const normalizedSlots = normalizeSlotsFromResponse(payload)
+
+    if (normalizedSlots.length === 0) {
+      return fallbackSlot ? upsertSlot(fallbackSlot) : undefined
+    }
+
+    const updated = normalizedSlots.map((slot) => {
+      const currentSlot = slots.value.find((item) => item.id === slot.id || (slot.apiId && item.apiId === slot.apiId))
+      const fallbackForSlot =
+        fallbackSlot && (fallbackSlot.id === slot.id || (slot.apiId && fallbackSlot.apiId === slot.apiId))
+          ? fallbackSlot
+          : undefined
+      const availablePatch =
+        slot.status === 'available'
+          ? {
+              studentId: undefined,
+              studentApiId: undefined,
+              studentName: undefined,
+              preference: undefined,
+              studentComment: undefined,
+              finalLocation: undefined,
+              finalLocationUrl: undefined,
+              instructorComment: undefined,
+              previousDate: undefined,
+              previousTime: undefined,
+              previousDuration: undefined,
+            }
+          : {}
+
+      return upsertSlot({
+        ...slot,
+        ...currentSlot,
+        ...fallbackForSlot,
+        ...availablePatch,
+        ...definedPatch(slot),
+        status: slot.status,
+        id: slot.id,
+        apiId: slot.apiId,
+      })
+    })
+
+    return (
+      updated.find((slot) => slot.status === 'confirmed') ||
+      updated.find((slot) => slot.status === 'reschedule') ||
+      updated[0]
+    )
+  }
+
+  async function addSlot(slot: Omit<BookingSlot, 'id'>) {
+    const fallbackSlot: BookingSlot = {
+      id: Date.now(),
+      ...slot,
+    }
+
+    try {
+      const response = await createBookingSlot(slotToCreatePayload(fallbackSlot))
+      return upsertSlot(normalizeBookingSlot(response))
+    } catch {
+      bookingError.value = 'Backend недоступен, слот добавлен только локально.'
+      slots.value.unshift(fallbackSlot)
+      return fallbackSlot
+    }
+  }
+
+  async function updateSlot(id: number, patch: Partial<BookingSlot>) {
+    const slot = slots.value.find((item) => item.id === id)
+
+    if (!slot) {
+      return undefined
+    }
+
+    const nextSlot = { ...slot, ...patch }
+
+    try {
+      if (!slot.apiId) {
+        throw new Error('Slot has no backend id')
+      }
+
+      const response = await updateBookingSlot(slot.apiId, slotPatchToPayload(nextSlot))
+      return upsertSlot({ ...nextSlot, ...definedPatch(normalizeBookingSlot(response)) })
+    } catch {
+      Object.assign(slot, patch)
+      bookingError.value = slot.apiId ? 'Backend недоступен, слот обновлен только локально.' : bookingError.value
+      return slot
+    }
+  }
+
+  async function removeSlot(id: number) {
+    const slot = slots.value.find((item) => item.id === id)
+
+    try {
+      if (slot?.apiId) {
+        await deleteBookingSlot(slot.apiId)
+      }
+    } catch {
+      bookingError.value = 'Не удалось удалить слот на backend, удалили только локально.'
+    }
+
     slots.value = slots.value.filter((slot) => slot.id !== id)
 
     if (activeStudentSlotId.value === id) {
@@ -52,8 +260,16 @@ export function useBookingStore() {
     }
   }
 
-  function requestSlot(id: number, studentId: number, preference: string, studentComment: string, status: BookingSlot['status'] = 'requested') {
-    updateSlot(id, {
+  async function requestSlot(
+    id: number,
+    studentId: number,
+    preference: string,
+    studentComment: string,
+    status: BookingSlot['status'] = 'requested',
+    studentApiId?: string,
+  ) {
+    const slot = slots.value.find((item) => item.id === id)
+    const patch: Partial<BookingSlot> = {
       studentId,
       preference,
       studentComment,
@@ -61,30 +277,189 @@ export function useBookingStore() {
       finalLocation: undefined,
       finalLocationUrl: undefined,
       instructorComment: undefined,
-    })
+    }
+
+    try {
+      if (!slot?.apiId) {
+        throw new Error('Slot has no backend id')
+      }
+
+      const response = await requestBookingSlot(slot.apiId, {
+        studentId: studentApiId || TEST_USER_ID || String(studentId),
+        preference,
+        studentComment,
+      })
+      upsertSlotsFromResponse(response, { ...slot, ...patch })
+    } catch {
+      if (slot) {
+        Object.assign(slot, patch)
+      }
+      bookingError.value = slot?.apiId ? 'Backend недоступен, заявка сохранена только локально.' : bookingError.value
+    }
+
     activeStudentSlotId.value = id
   }
 
-  function confirmSlot(
+  async function confirmSlot(
     id: number,
     finalLocation: string,
     finalLocationUrl: string | undefined,
     instructorComment: string,
   ) {
-    updateSlot(id, {
+    const slot = slots.value.find((item) => item.id === id)
+    const patch: Partial<BookingSlot> = {
       status: 'confirmed',
       finalLocation,
       finalLocationUrl,
       instructorComment,
-    })
+    }
+
+    try {
+      if (!slot?.apiId) {
+        throw new Error('Slot has no backend id')
+      }
+
+      const response = await confirmBookingSlot(slot.apiId, {
+        finalLocation,
+        finalLocationUrl,
+        instructorComment,
+      })
+      return upsertSlotsFromResponse(response, { ...slot, ...patch })
+    } catch {
+      if (slot) {
+        Object.assign(slot, patch)
+      }
+      bookingError.value = slot?.apiId ? 'Backend недоступен, подтверждение сохранено только локально.' : bookingError.value
+      return slot
+    }
+  }
+
+  async function rescheduleSlot(
+    id: number,
+    nextTime: Pick<BookingSlot, 'date' | 'time' | 'duration'>,
+    studentComment?: string,
+  ) {
+    const slot = slots.value.find((item) => item.id === id)
+    const patch: Partial<BookingSlot> = {
+      ...nextTime,
+      status: 'reschedule',
+      previousDate: slot?.date,
+      previousTime: slot?.time,
+      previousDuration: slot?.duration,
+      studentComment: studentComment || slot?.studentComment,
+    }
+
+    try {
+      if (!slot?.apiId) {
+        throw new Error('Slot has no backend id')
+      }
+
+      const response = await rescheduleBookingSlot(slot.apiId, slotToCreatePayload({ ...slot, ...nextTime }))
+      return upsertSlotsFromResponse(response, { ...slot, ...patch })
+    } catch {
+      if (slot) {
+        Object.assign(slot, patch)
+      }
+      bookingError.value = slot?.apiId ? 'Backend недоступен, перенос сохранен только локально.' : bookingError.value
+      return slot
+    }
   }
 
   function completeSlot(id: number) {
-    return updateSlot(id, { status: 'completed' })
+    const slot = slots.value.find((item) => item.id === id)
+
+    if (slot) {
+      Object.assign(slot, { status: 'completed' })
+    }
+
+    return slot
   }
 
-  function declineSlot(id: number) {
-    updateSlot(id, { status: 'cancelled' })
+  async function declineSlot(id: number) {
+    const slot = slots.value.find((item) => item.id === id)
+
+    try {
+      if (!slot?.apiId) {
+        throw new Error('Slot has no backend id')
+      }
+
+      const response = await declineBookingSlot(slot.apiId)
+      return upsertSlotsFromResponse(response, { ...slot, status: 'cancelled' })
+    } catch {
+      if (slot) {
+        Object.assign(slot, { status: 'cancelled' })
+      }
+      bookingError.value = slot?.apiId ? 'Backend недоступен, отклонение сохранено только локально.' : bookingError.value
+      return slot
+    }
+  }
+
+  async function cancelSlot(id: number) {
+    const slot = slots.value.find((item) => item.id === id)
+    const patch: Partial<BookingSlot> = {
+      status: 'available',
+      studentId: undefined,
+      studentApiId: undefined,
+      studentName: undefined,
+      preference: undefined,
+      studentComment: undefined,
+      finalLocation: undefined,
+      finalLocationUrl: undefined,
+      instructorComment: undefined,
+      previousDate: undefined,
+      previousTime: undefined,
+      previousDuration: undefined,
+    }
+
+    try {
+      if (!slot?.apiId) {
+        throw new Error('Slot has no backend id')
+      }
+
+      const response = await cancelBookingSlot(slot.apiId)
+      return upsertSlotsFromResponse(response, { ...slot, ...patch })
+    } catch {
+      if (slot) {
+        Object.assign(slot, patch)
+      }
+      bookingError.value = slot?.apiId ? 'Backend недоступен, отмена сохранена только локально.' : bookingError.value
+      return slot
+    }
+  }
+
+  async function loadBookingSlots() {
+    isBookingLoading.value = true
+    bookingError.value = ''
+
+    try {
+      const payload = await fetchBookingSlots()
+      slots.value = normalizeBookingSlots(payload)
+    } catch {
+      bookingError.value = 'Backend booking-slots недоступен, используем локальные слоты.'
+    } finally {
+      isBookingLoading.value = false
+    }
+  }
+
+  async function loadInstructorCalendar() {
+    isBookingLoading.value = true
+    bookingError.value = ''
+
+    try {
+      const calendarPayload = await fetchInstructorCalendar()
+      const calendarSlots = normalizeBookingSlots(calendarPayload)
+
+      try {
+        const bookingPayload = await fetchBookingSlots()
+        slots.value = mergeSlotLists(normalizeBookingSlots(bookingPayload), calendarSlots)
+      } catch {
+        slots.value = calendarSlots
+      }
+    } catch {
+      bookingError.value = 'Backend calendar недоступен, используем локальные слоты.'
+    } finally {
+      isBookingLoading.value = false
+    }
   }
 
   return {
@@ -93,13 +468,20 @@ export function useBookingStore() {
     addSlot,
     availableSlots,
     bookingManagementSlots,
+    cancelSlot,
     completeSlot,
     confirmSlot,
     declineSlot,
     getStudentActiveSlots,
+    isBookingLoading,
+    bookingError,
+    loadBookingSlots,
+    loadInstructorCalendar,
     removeSlot,
     requestSlot,
     requestedSlots,
+    rescheduleSlot,
+    rescheduleSlots,
     confirmedSlots,
     slots,
     updateSlot,

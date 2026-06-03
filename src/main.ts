@@ -2,6 +2,7 @@ import 'primeicons/primeicons.css'
 import './style.css'
 
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 
 import WebApp from '@twa-dev/sdk'
@@ -22,8 +23,10 @@ import Textarea from 'primevue/textarea'
 
 
 const app = createApp(App)
+const pinia = createPinia()
 
 app.use(PrimeVue)
+app.use(pinia)
 app.component('Avatar', Avatar)
 app.component('Button', Button)
 app.component('Card', Card)

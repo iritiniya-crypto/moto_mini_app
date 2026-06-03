@@ -19,7 +19,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { completeSlot } = useBookingStore()
+const { completeSlot, loadInstructorCalendar } = useBookingStore()
 const { createTrainingReport } = useTrainingStore()
 
 const selectedSkills = ref<Skill[]>([])
@@ -76,7 +76,7 @@ function initializeSkillImprovements() {
   skillImprovements.value = { ...skillImprovements.value, ...improvements }
 }
 
-function saveReport() {
+async function saveReport() {
   if (!props.slot || !props.student || !isFormValid.value || isSaving.value) return
 
   isSaving.value = true
@@ -84,18 +84,24 @@ function saveReport() {
   initializeSkillImprovements()
 
   try {
-    const report = createTrainingReport({
-      studentId: props.student.id,
-      slotId: props.slot.id,
-      date: props.slot.date,
-      duration: props.slot.duration,
-      location: props.slot.finalLocation || 'Не указано',
-      trainedSkills: (selectedSkills.value.map((s) => s.name)),
-      improved: improved.value.trim(),
-      nextFocus: nextFocus.value.trim(),
-      skillUpdates: { ...skillImprovements.value },
-      levelUpdate: levelUpdate.value && levelUpdate.value !== props.student.level ? levelUpdate.value : undefined,
-    })
+    const report = await createTrainingReport(
+      {
+        studentId: props.student.id,
+        slotId: props.slot.id,
+        date: props.slot.date,
+        duration: props.slot.duration,
+        location: props.slot.finalLocation || 'Не указано',
+        trainedSkills: selectedSkills.value.map((s) => s.name),
+        improved: improved.value.trim(),
+        nextFocus: nextFocus.value.trim(),
+        skillUpdates: { ...skillImprovements.value },
+        levelUpdate: levelUpdate.value && levelUpdate.value !== props.student.level ? levelUpdate.value : undefined,
+      },
+      {
+        slotApiId: props.slot.apiId,
+        studentApiId: props.student.apiId,
+      },
+    )
 
     if (!report) {
       throw new Error('Не удалось сохранить отчет: ученик не найден')
@@ -105,6 +111,8 @@ function saveReport() {
     if (!completedSlot) {
       throw new Error('Не удалось завершить тренировку: слот не найден')
     }
+
+    await loadInstructorCalendar()
 
     emit('update:open', false)
     emit('completed')

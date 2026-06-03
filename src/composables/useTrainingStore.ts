@@ -1,6 +1,11 @@
 import { computed, ref } from 'vue'
+import { packageToPayload, upsertStudentPackage as upsertStudentPackageApi } from '../api/packages'
+import { skillsToPayload, updateStudentSkillsApi } from '../api/skills'
+import { createManualTrainingHistory, manualTrainingToPayload } from '../api/trainingHistory'
+import { createTrainingReportApi } from '../api/trainingReports'
+import { createTrainingVideo } from '../api/videos'
 import { students } from '../mock/students'
-import type { Student, TrainingReport, TrainingHistory } from '../mock/types'
+import type { Student, TrainingPackage, TrainingReport, TrainingHistory } from '../mock/types'
 
 const trainingReports = ref<TrainingReport[]>([])
 const studentsData = ref<Student[]>(students.map((s) => ({ ...s })))
@@ -12,7 +17,7 @@ export function useTrainingStore() {
     return studentsData.value.find((s) => s.id === studentId)
   }
 
-  function createTrainingReport(report: Omit<TrainingReport, 'id' | 'createdAt'>) {
+  function saveReportLocally(report: Omit<TrainingReport, 'id' | 'createdAt'>, apiId?: string, historyApiId?: string) {
     const student = getStudent(report.studentId)
     if (!student) {
       return null
@@ -24,6 +29,7 @@ export function useTrainingStore() {
       trainedSkills: [...report.trainedSkills],
       skillUpdates: { ...report.skillUpdates },
       id,
+      apiId,
       createdAt: Date.now(),
     }
 
@@ -41,6 +47,7 @@ export function useTrainingStore() {
 
     const history: TrainingHistory = {
       id: existingHistoryIndex >= 0 ? student.trainingHistory[existingHistoryIndex].id : Date.now(),
+      apiId: historyApiId,
       slotId: report.slotId,
       date: report.date,
       duration: report.duration,
@@ -76,16 +83,69 @@ export function useTrainingStore() {
     return newReport
   }
 
+  async function createTrainingReport(
+    report: Omit<TrainingReport, 'id' | 'createdAt'>,
+    options: { slotApiId?: string; studentApiId?: string } = {},
+  ) {
+    try {
+      if (!options.slotApiId || !options.studentApiId) {
+        throw new Error('Report has no backend ids')
+      }
+
+      const response = await createTrainingReportApi({
+        slotId: options.slotApiId,
+        studentId: options.studentApiId,
+        trainedSkills: report.trainedSkills,
+        improved: report.improved,
+        nextFocus: report.nextFocus,
+        levelUpdate: report.levelUpdate,
+      })
+
+      return saveReportLocally(
+        report,
+        typeof response.report.id === 'string' ? response.report.id : undefined,
+        typeof response.trainingHistory.id === 'string' ? response.trainingHistory.id : undefined,
+      )
+    } catch {
+      return saveReportLocally(report)
+    }
+  }
+
   function updateStudent(studentId: number, patch: Partial<Student>) {
     const student = getStudent(studentId)
     if (student) {
       Object.assign(student, patch)
+      return student
     }
+
+    const nextStudent: Student = {
+      id: studentId,
+      name: patch.name || 'Ученик',
+      status: patch.status || 'активный',
+      level: patch.level || 'Новичок',
+      completedTrainingsCount: patch.completedTrainingsCount || 0,
+      nextLesson: patch.nextLesson || 'Время еще не выбрано',
+      avatar: patch.avatar || '',
+      focus: patch.focus || '',
+      ...patch,
+    }
+
+    studentsData.value.push(nextStudent)
+    return nextStudent
   }
 
-  function updateStudentSkills(studentId: number, skills: Student['skills']) {
+  async function updateStudentSkills(studentId: number, skills: Student['skills'], studentApiId?: string) {
     const student = getStudent(studentId)
     if (student && skills) {
+      try {
+        const payload = skillsToPayload(skills)
+        if (studentApiId && payload.length > 0) {
+          await updateStudentSkillsApi(studentApiId, payload)
+        }
+      } catch {
+        // Keep current local behavior as fallback.
+      }
+
       student.skills = skills.map((skill) => ({
         ...skill,
         value: Math.min(100, Math.max(0, Number(skill.oldValue) || 0)),
@@ -93,10 +153,11 @@ export function useTrainingStore() {
     }
   }
 
-  function addTrainingVideo(
+  async function addTrainingVideo(
     studentId: number,
     training: Pick<TrainingHistory, 'slotId' | 'date' | 'duration' | 'location' | 'theme' | 'topics'>,
     video: { title: string; url: string; comment: string },
+    historyApiId?: string,
   ) {
     const student = getStudent(studentId)
     if (!student) {
@@ -113,6 +174,18 @@ export function useTrainingStore() {
       videoTitle: video.title,
       videoUrl: video.url,
       videoComment: video.comment,
+    }
+
+    try {
+      if (historyApiId) {
+        await createTrainingVideo(historyApiId, {
+          title: video.title,
+          telegramUrl: video.url,
+          comment: video.comment,
+        })
+      }
+    } catch {
+      // Video remains visible locally if backend is unavailable.
     }
 
     if (existingHistory) {
@@ -135,11 +208,12 @@ export function useTrainingStore() {
     })
   }
 
-  function addManualTraining(
+  async function addManualTraining(
     studentId: number,
     training: Pick<TrainingHistory, 'date' | 'duration' | 'location' | 'topics' | 'improved' | 'nextFocus'> & {
       videoUrl?: string
     },
+    studentApiId?: string,
   ) {
     const student = getStudent(studentId)
     if (!student) {
@@ -170,10 +244,46 @@ export function useTrainingStore() {
       videoComment: training.videoUrl ? training.improved : undefined,
     }
 
+    try {
+      if (studentApiId) {
+        const response = await createManualTrainingHistory(studentApiId, manualTrainingToPayload(history))
+        history.apiId = typeof response.id === 'string' ? response.id : undefined
+
+        if (training.videoUrl && history.apiId) {
+          await createTrainingVideo(history.apiId, {
+            title: 'Видео тренировки',
+            telegramUrl: training.videoUrl,
+            comment: training.improved,
+          })
+        }
+      }
+    } catch {
+      // Manual history is kept locally when backend is unavailable.
+    }
+
     student.trainingHistory.unshift(history)
     student.completedTrainingsCount++
 
     return history
+  }
+
+  async function upsertStudentPackage(studentId: number, trainingPackage: TrainingPackage, studentApiId?: string) {
+    const student = getStudent(studentId)
+
+    if (!student) {
+      return null
+    }
+
+    try {
+      if (studentApiId) {
+        await upsertStudentPackageApi(studentApiId, packageToPayload(trainingPackage))
+      }
+    } catch {
+      // Package is intentionally manual, so local fallback is acceptable.
+    }
+
+    student.trainingPackage = trainingPackage
+    return trainingPackage
   }
 
   function getStudentTrainingHistory(studentId: number) {
@@ -200,6 +310,7 @@ export function useTrainingStore() {
     getStudentTrainingVideos,
     getStudentSkills,
     trainingReports: computed(() => trainingReports.value),
+    upsertStudentPackage,
     updateStudentSkills,
     updateStudent,
   }

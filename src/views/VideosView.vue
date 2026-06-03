@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import SectionHeader from '../components/SectionHeader.vue'
 import VideoCard from '../components/VideoCard.vue'
 import { useTrainingStore } from '../composables/useTrainingStore'
+import { useUserStore } from '../stores/userStore'
 import { students } from '../mock/students'
 
 const { getStudentTrainingVideos } = useTrainingStore()
+const userStore = useUserStore()
+const { profile } = storeToRefs(userStore)
 const videos = computed(() =>
-  getStudentTrainingVideos(students[0].id).map((history) => ({
+  (profile.value?.trainingHistory?.filter((history) => history.videoUrl) || getStudentTrainingVideos(students[0].id)).map((history) => ({
     id: history.id,
     title: history.videoTitle || history.theme,
     date: history.date,
@@ -16,6 +20,10 @@ const videos = computed(() =>
     telegramUrl: history.videoUrl || '',
   })),
 )
+
+onMounted(() => {
+  userStore.loadProfile(students[0].id, students[0])
+})
 </script>
 
 <template>
