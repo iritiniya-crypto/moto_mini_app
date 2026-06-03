@@ -1,4 +1,4 @@
-import type { BookingSlot } from './types'
+import type {BookingSlot} from './types'
 
 export const standardLocations = [
   {
@@ -21,7 +21,7 @@ export const bookingSlots: BookingSlot[] = [
     date: '22 июня',
     time: '18:30',
     duration: '90 мин',
-    studentId: 1,
+    studentId: 'asfasfa gfaosyifg liu',
     preference: 'Площадка Запад',
     finalLocation: 'Площадка Запад',
     finalLocationUrl: 'https://maps.google.com/?q=Ploshchadka+Zapad',

@@ -1,24 +1,19 @@
-import { computed, ref } from 'vue'
-import { packageToPayload, upsertStudentPackage as upsertStudentPackageApi } from '../api/packages'
-import { skillsToPayload, updateStudentSkillsApi } from '../api/skills'
-import { createManualTrainingHistory, manualTrainingToPayload } from '../api/trainingHistory'
-import { createTrainingReportApi } from '../api/trainingReports'
-import { createTrainingVideo } from '../api/videos'
-import { students } from '../mock/students'
-import type { Student, TrainingPackage, TrainingReport, TrainingHistory } from '../mock/types'
+import {computed, ref} from 'vue'
+import {packageToPayload, upsertStudentPackage as upsertStudentPackageApi} from '../api/packages'
+import {skillsToPayload, updateStudentSkillsApi} from '../api/skills'
+import {createManualTrainingHistory, manualTrainingToPayload} from '../api/trainingHistory'
+import {createTrainingReportApi} from '../api/trainingReports'
+import {createTrainingVideo} from '../api/videos'
+import type {Student, TrainingHistory, TrainingPackage, TrainingReport} from '../mock/types'
+import {useUserStore} from "@/stores/userStore.ts";
 
 const trainingReports = ref<TrainingReport[]>([])
-const studentsData = ref<Student[]>(students.map((s) => ({ ...s })))
 
 export function useTrainingStore() {
-  const allStudents = computed(() => studentsData.value)
-
-  function getStudent(studentId: number) {
-    return studentsData.value.find((s) => s.id === studentId)
-  }
-
-  function saveReportLocally(report: Omit<TrainingReport, 'id' | 'createdAt'>, apiId?: string, historyApiId?: string) {
-    const student = getStudent(report.studentId)
+  async function saveReportLocally(report: Omit<TrainingReport, 'id' | 'createdAt'>, apiId?: string, historyApiId?: string) {
+    const userStore = useUserStore()
+    await userStore.loadProfile(report.studentId)
+    const student = userStore.profile
     if (!student) {
       return null
     }
@@ -111,8 +106,10 @@ export function useTrainingStore() {
     }
   }
 
-  function updateStudent(studentId: number, patch: Partial<Student>) {
-    const student = getStudent(studentId)
+  async function updateStudent(studentId: string, patch: Partial<Student>) {
+    const userStore = useUserStore()
+    await userStore.loadProfile(studentId)
+    const student = userStore.profile
     if (student) {
       Object.assign(student, patch)
       return student
@@ -130,12 +127,13 @@ export function useTrainingStore() {
       ...patch,
     }
 
-    studentsData.value.push(nextStudent)
     return nextStudent
   }
 
-  async function updateStudentSkills(studentId: number, skills: Student['skills'], studentApiId?: string) {
-    const student = getStudent(studentId)
+  async function updateStudentSkills(studentId: string, skills: Student['skills'], studentApiId?: string) {
+    const userStore = useUserStore()
+    await userStore.loadProfile(studentId)
+    const student = userStore.profile
     if (student && skills) {
       try {
         const payload = skillsToPayload(skills)
@@ -154,12 +152,14 @@ export function useTrainingStore() {
   }
 
   async function addTrainingVideo(
-    studentId: number,
+    studentId: string,
     training: Pick<TrainingHistory, 'slotId' | 'date' | 'duration' | 'location' | 'theme' | 'topics'>,
     video: { title: string; url: string; comment: string },
     historyApiId?: string,
   ) {
-    const student = getStudent(studentId)
+    const userStore = useUserStore()
+    await userStore.loadProfile(studentId)
+    const student = userStore.profile
     if (!student) {
       return
     }
@@ -209,13 +209,15 @@ export function useTrainingStore() {
   }
 
   async function addManualTraining(
-    studentId: number,
+    studentId: string,
     training: Pick<TrainingHistory, 'date' | 'duration' | 'location' | 'topics' | 'improved' | 'nextFocus'> & {
       videoUrl?: string
     },
     studentApiId?: string,
   ) {
-    const student = getStudent(studentId)
+    const userStore = useUserStore()
+    await userStore.loadProfile(studentId)
+    const student = userStore.profile
     if (!student) {
       return null
     }
@@ -267,8 +269,10 @@ export function useTrainingStore() {
     return history
   }
 
-  async function upsertStudentPackage(studentId: number, trainingPackage: TrainingPackage, studentApiId?: string) {
-    const student = getStudent(studentId)
+  async function upsertStudentPackage(studentId: string, trainingPackage: TrainingPackage, studentApiId?: string) {
+    const userStore = useUserStore()
+    await userStore.loadProfile(studentId)
+    const student = userStore.profile
 
     if (!student) {
       return null
@@ -286,26 +290,28 @@ export function useTrainingStore() {
     return trainingPackage
   }
 
-  function getStudentTrainingHistory(studentId: number) {
-    const student = getStudent(studentId)
+  async function getStudentTrainingHistory(studentId: string) {
+    const userStore = useUserStore()
+    await userStore.loadProfile(studentId)
+    const student = userStore.profile
     return student?.trainingHistory || []
   }
 
-  function getStudentSkills(studentId: number) {
-    const student = getStudent(studentId)
+  async function getStudentSkills(studentId: string) {
+    const userStore = useUserStore()
+    await userStore.loadProfile(studentId)
+    const student = userStore.profile
     return student?.skills || []
   }
 
-  function getStudentTrainingVideos(studentId: number) {
-    return getStudentTrainingHistory(studentId).filter((history) => history.videoUrl)
+  async function getStudentTrainingVideos(studentId: string) {
+    return (await getStudentTrainingHistory(studentId)).filter((history) => history.videoUrl)
   }
 
   return {
     addManualTraining,
     addTrainingVideo,
-    allStudents,
     createTrainingReport,
-    getStudent,
     getStudentTrainingHistory,
     getStudentTrainingVideos,
     getStudentSkills,

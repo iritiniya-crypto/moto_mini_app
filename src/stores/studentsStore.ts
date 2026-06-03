@@ -1,35 +1,16 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { fetchStudentPackage, normalizeTrainingPackage, packageToPayload, upsertStudentPackage } from '../api/packages'
-import { fetchStudentSkills, normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi } from '../api/skills'
+import {defineStore} from 'pinia'
+import {ref} from 'vue'
+import {fetchStudentPackage, normalizeTrainingPackage, packageToPayload, upsertStudentPackage} from '../api/packages'
+import {fetchStudentSkills, normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi} from '../api/skills'
 import {
   createStudent,
   fetchStudents,
   normalizeStudentResponse,
   normalizeStudents,
-  updateStudent,
   type StudentPayload,
+  updateStudent,
 } from '../api/students'
-import type { Student } from '../mock/types'
-
-function fallbackStudentFromPayload(payload: StudentPayload): Student {
-  return {
-    id: Date.now(),
-    name: payload.name,
-    status: 'новый ученик',
-    level: payload.level || 'Новичок',
-    completedTrainingsCount: 0,
-    nextLesson: 'Время еще не выбрано',
-    avatar: '',
-    focus: payload.nextTrainingPlan || payload.focus || '',
-    telegramUsername: payload.telegramUsername,
-    trainingPackage: {
-      total: 0,
-      completed: 0,
-      paymentStatus: 'не оплачено',
-    },
-  }
-}
+import type {Student} from '../mock/types'
 
 export const useStudentsStore = defineStore('students', () => {
   const students = ref<Student[]>([])
@@ -38,7 +19,7 @@ export const useStudentsStore = defineStore('students', () => {
   const error = ref('')
   const usingFallback = ref(false)
 
-  function replaceStudent(studentId: number, patch: Partial<Student>) {
+  function replaceStudent(studentId: string, patch: Partial<Student>) {
     students.value = students.value.map((student) => (student.id === studentId ? { ...student, ...patch } : student))
   }
 
@@ -70,11 +51,8 @@ export const useStudentsStore = defineStore('students', () => {
       usingFallback.value = false
       return createdStudent
     } catch {
-      const fallbackStudent = fallbackStudentFromPayload(payload)
-      students.value = [...students.value, fallbackStudent]
       usingFallback.value = true
       error.value = 'Backend недоступен, ученик добавлен только локально.'
-      return fallbackStudent
     } finally {
       isSaving.value = false
     }

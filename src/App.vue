@@ -1,12 +1,13 @@
-<script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+<script lang="ts" setup>
+import {computed, ref, watch} from 'vue'
 import AppShell from './layouts/AppShell.vue'
-import BookingView from './views/BookingView.vue'
-import InstructorDashboard from './views/InstructorDashboard.vue'
-import MyTrainingsView from './views/MyTrainingsView.vue'
-import ProfileView from './views/ProfileView.vue'
-import StudentDashboard from './views/StudentDashboard.vue'
+import BookingView from './views/instructor/BookingView.vue'
+import InstructorDashboard from './views/instructor/InstructorDashboard.vue'
+import MyTrainingsView from './views/student/MyTrainingsView.vue'
+import StudentProfileView from './views/student/StudentProfileView.vue'
+import StudentDashboard from './views/student/StudentDashboard.vue'
 import VideosView from './views/VideosView.vue'
+import InstructorProfileView from "./views/instructor/InstructorProfileView.vue";
 
 type Role = 'student' | 'instructor'
 type Tab = 'home' | 'lessons' | 'videos' | 'profile'
@@ -33,7 +34,11 @@ const currentView = computed(() => {
     return VideosView
   }
 
-  return ProfileView
+  if (activeTab.value === 'profile' && activeRole.value === 'student') {
+    return StudentProfileView
+  }
+
+  return InstructorProfileView
 })
 </script>
 

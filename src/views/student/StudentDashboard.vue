@@ -1,13 +1,13 @@
-<script setup lang="ts">
-import { computed, ref } from 'vue'
-import SectionHeader from '../components/SectionHeader.vue'
+<script lang="ts" setup>
+import {computed, ref} from 'vue'
+import SectionHeader from '../../components/SectionHeader.vue'
 import {
   motorcyclePrograms,
   scooterPrograms,
+  type TheoryCard,
   theoryCards,
   type TrainingProgram,
-  type TheoryCard,
-} from '../mock/trainingContent'
+} from '@/mock/trainingContent.ts'
 
 type VehicleMode = 'scooter' | 'motorcycle'
 
@@ -36,7 +36,7 @@ function togglePlanDay(day: string) {
         <h1>Уверенное вождение за 3 дня</h1>
         <p>Практическое обучение вождения скутера и мотоцикла в Нячанге.</p>
 
-        <div class="vehicle-switch" aria-label="Тип техники">
+        <div aria-label="Тип техники" class="vehicle-switch">
           <button :class="{ active: activeMode === 'scooter' }" type="button" @click="activeMode = 'scooter'">
             Скутер
           </button>
@@ -48,7 +48,7 @@ function togglePlanDay(day: string) {
     </Card>
 
     <section>
-      <SectionHeader title="Программы тренировок" :action="activeMode === 'scooter' ? 'скутер' : 'мотоцикл'" />
+      <SectionHeader :action="activeMode === 'scooter' ? 'скутер' : 'мотоцикл'" title="Программы тренировок" />
       <div class="stack tight">
         <Card v-for="program in programs" :key="program.id" class="program-card">
           <template #content>
@@ -66,7 +66,7 @@ function togglePlanDay(day: string) {
               <strong v-for="price in program.prices" :key="price">{{ price }}</strong>
             </div>
 
-            <Button label="Подробнее" icon="pi pi-angle-right" size="small" @click="openProgram(program)" />
+            <Button icon="pi pi-angle-right" label="Подробнее" size="small" @click="openProgram(program)" />
           </template>
         </Card>
       </div>
@@ -98,9 +98,9 @@ function togglePlanDay(day: string) {
 
     <Dialog
       :visible="Boolean(selectedProgram)"
-      modal
-      header="Программа тренировок"
       class="moto-dialog"
+      header="Программа тренировок"
+      modal
       @update:visible="selectedProgram = null"
     >
       <div v-if="selectedProgram" class="form-stack">
@@ -171,9 +171,9 @@ function togglePlanDay(day: string) {
 
     <Dialog
       :visible="Boolean(selectedTheory)"
-      modal
-      header="Теория и схема"
       class="moto-dialog"
+      header="Теория и схема"
+      modal
       @update:visible="selectedTheory = null"
     >
       <div v-if="selectedTheory" class="form-stack">
@@ -183,15 +183,15 @@ function togglePlanDay(day: string) {
         </div>
 
         <div v-if="selectedTheory.scheme === 'eight'" class="real-scheme-card">
-          <img src="../../public/eight-scheme.png" alt="Схема упражнения Восьмерка" />
+          <img alt="Схема упражнения Восьмерка" src="../../../public/eight-scheme.png" />
         </div>
 
         <div v-else-if="selectedTheory.scheme === 'oval'" class="real-scheme-card">
-          <img src="../../public/oval-scheme.png" alt="Схема упражнения Овал" />
+          <img alt="Схема упражнения Овал" src="../../../public/oval-scheme.png" />
         </div>
 
         <div v-else-if="selectedTheory.scheme === 'snake'" class="real-scheme-card">
-          <img src="../../public/snake-sheme.png" alt="Схема упражнения Змейка" />
+          <img alt="Схема упражнения Змейка" src="../../../public/snake-sheme.png" />
         </div>
 
         <div v-else :class="['exercise-scheme', `scheme-${selectedTheory.scheme}`]" aria-hidden="true">

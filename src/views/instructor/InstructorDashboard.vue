@@ -1,26 +1,29 @@
-<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import CompleteTrainingDialog from '../components/CompleteTrainingDialog.vue'
-import SectionHeader from '../components/SectionHeader.vue'
-import { useBookingStore } from '../composables/useBookingStore'
-import { useTrainingStore } from '../composables/useTrainingStore'
-import { standardLocations } from '../mock/booking'
-import type { BookingSlot, Student } from '../mock/types'
+<script lang="ts" setup>
+import {computed, onMounted, ref} from 'vue'
+import CompleteTrainingDialog from '@/components/CompleteTrainingDialog.vue'
+import SectionHeader from '@/components/SectionHeader.vue'
+import {useBookingStore} from '@/composables/useBookingStore.ts'
+import {useTrainingStore} from '@/composables/useTrainingStore.ts'
+import {standardLocations} from '@/mock/booking.ts'
+import type {BookingSlot, Student, TrainingHistory} from '@/mock/types.ts'
+import {useUserStore} from "@/stores/userStore.ts";
 
+const userStore = useUserStore()
 const { confirmSlot, declineSlot, loadInstructorCalendar, requestedSlots, rescheduleSlots, slots } = useBookingStore()
-const { getStudent, getStudentTrainingHistory, trainingReports, updateStudent } = useTrainingStore()
+const { getStudentTrainingHistory, trainingReports } = useTrainingStore()
 type CalendarFilter = 'all' | 'available' | 'requested' | 'reschedule' | 'confirmed' | 'completed'
 type CalendarTraining = BookingSlot & {
   student: string
   statusText: string
   statusSeverity: 'success' | 'warn' | 'secondary'
-  history: ReturnType<typeof getStudentTrainingHistory>[number] | null
+  history: TrainingHistory | null
   report: typeof trainingReports.value[number] | null
 }
 
 const calendarOpen = ref(false)
 const calendarFilter = ref<CalendarFilter>('all')
 const selectedReportTraining = ref<CalendarTraining | null>(null)
+const trainingHistoryBySlotId = ref<Record<number, TrainingHistory>>({})
 const calendarFilters: { label: string; value: CalendarFilter }[] = [
   { label: 'Все', value: 'all' },
   { label: 'Свободно', value: 'available' },
@@ -49,7 +52,7 @@ function todayLabel() {
 }
 
 function studentName(slot: BookingSlot) {
-  return slot.studentName || getStudent(slot.studentId || 0)?.name || 'Ученик'
+  return slot.studentName  || 'Ученик'
 }
 
 function parseSlotDateTime(slot: Pick<BookingSlot, 'date' | 'time'>) {
@@ -96,11 +99,37 @@ function statusSeverity(status: BookingSlot['status']): 'success' | 'warn' | 'se
 }
 
 function historyForSlot(slot: BookingSlot) {
-  return getStudentTrainingHistory(slot.studentId || 0).find((history) => history.slotId === slot.id) || null
+  return trainingHistoryBySlotId.value[slot.id] || null
 }
 
 function reportForSlot(slot: BookingSlot) {
   return trainingReports.value.find((report) => report.slotId === slot.id) || null
+}
+
+async function loadCalendarHistories() {
+  const completedSlots = slots.value.filter((slot) => slot.status === 'completed' && Boolean(slot.studentId))
+
+  if (completedSlots.length === 0) {
+    trainingHistoryBySlotId.value = {}
+    return
+  }
+
+  const historiesBySlotId: Record<number, TrainingHistory> = {}
+  const uniqueStudentIds = [...new Set(completedSlots.map((slot) => slot.studentId))]
+
+  await Promise.all(
+    uniqueStudentIds.map(async (studentId) => {
+      const studentHistory = await getStudentTrainingHistory(studentId || '')
+
+      studentHistory.forEach((history) => {
+        if (typeof history.slotId === 'number') {
+          historiesBySlotId[history.slotId] = history
+        }
+      })
+    }),
+  )
+
+  trainingHistoryBySlotId.value = historiesBySlotId
 }
 
 const requests = computed(() =>
@@ -225,6 +254,7 @@ async function confirmRequest() {
   const instructorComment = finalLocationForm.value.instructorComment
   await confirmSlot(request.id, finalLocation, finalLocationUrl, instructorComment)
   await loadInstructorCalendar()
+  await loadCalendarHistories()
   confirmedRequest.value = {
     ...request,
     status: 'confirmed',
@@ -238,16 +268,13 @@ async function confirmRequest() {
 async function declineRequest(request: BookingSlot & { student: string }) {
   await declineSlot(request.id)
   await loadInstructorCalendar()
+  await loadCalendarHistories()
 }
 
 function openCompleteTrainingDialog(training: BookingSlot & { student: string }) {
   trainingToComplete.value = training
-  const existingStudent = getStudent(training.studentId || 0)
-  studentForTraining.value = existingStudent || updateStudent(training.studentId || Date.now(), {
-    apiId: training.studentApiId,
-    name: training.student,
-    level: 'Новичок',
-  })
+  userStore.loadProfile(training.studentId || '')
+  studentForTraining.value = userStore.profile
   completeTrainingDialogOpen.value = true
 }
 
@@ -269,8 +296,9 @@ function openLocation(url: string) {
   window.open(url, '_blank')
 }
 
-onMounted(() => {
-  loadInstructorCalendar()
+onMounted(async () => {
+  await loadInstructorCalendar()
+  await loadCalendarHistories()
 })
 
 </script>
@@ -281,7 +309,7 @@ onMounted(() => {
       <template #content>
         <div class="hero-title-row">
           <h1>Сегодня</h1>
-          <Button label="Календарь" icon="pi pi-calendar" severity="secondary" @click="calendarOpen = true" />
+          <Button icon="pi pi-calendar" label="Календарь" severity="secondary" @click="calendarOpen = true" />
         </div>
 
         <div v-if="todaySchedule.length > 0" class="schedule-list">
@@ -292,21 +320,21 @@ onMounted(() => {
                 <b>{{ item.student }}</b>
                 <span>{{ item.place }} · {{ durationText(item.duration) }}</span>
               </div>
-              <Tag :value="item.statusText" :severity="item.statusSeverity" />
+              <Tag :severity="item.statusSeverity" :value="item.statusText" />
             </div>
 
             <div v-if="item.status === 'confirmed'" class="slot-actions">
               <Button
                 v-if="item.finalLocationUrl"
-                label="Открыть локацию"
                 icon="pi pi-map-marker"
-                size="small"
+                label="Открыть локацию"
                 severity="secondary"
+                size="small"
                 @click="openLocation(item.finalLocationUrl)"
               />
               <Button
-                label="Проведено"
                 icon="pi pi-check-circle"
+                label="Проведено"
                 size="small"
                 @click="openCompleteTrainingDialog(item)"
               />
@@ -331,22 +359,22 @@ onMounted(() => {
                 <small v-if="request.studentComment">Комментарий: "{{ request.studentComment }}"</small>
               </div>
               <Tag
-                :value="request.status === 'confirmed' ? 'Подтверждено' : request.status === 'cancelled' ? 'Отклонено' : 'Ожидает подтверждения'"
                 :severity="request.status === 'confirmed' ? 'success' : request.status === 'cancelled' ? 'secondary' : 'warn'"
+                :value="request.status === 'confirmed' ? 'Подтверждено' : request.status === 'cancelled' ? 'Отклонено' : 'Ожидает подтверждения'"
               />
             </div>
             <div v-if="request.status === 'requested'" class="slot-actions">
-              <Button label="Подтвердить" icon="pi pi-check" size="small" @click="openConfirmRequest(request)" />
-              <Button label="Отклонить" icon="pi pi-times" size="small" severity="secondary" @click="declineRequest(request)" />
+              <Button icon="pi pi-check" label="Подтвердить" size="small" @click="openConfirmRequest(request)" />
+              <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(request)" />
             </div>
             <div v-if="request.status === 'confirmed'" class="booking-summary">
               <span>Место: {{ request.finalLocation }}</span>
               <a
                 v-if="request.finalLocationUrl"
-                class="location-link"
                 :href="request.finalLocationUrl"
-                target="_blank"
+                class="location-link"
                 rel="noreferrer"
+                target="_blank"
               >
                 Открыть локацию
               </a>
@@ -368,11 +396,11 @@ onMounted(() => {
                 <span>{{ rescheduleTimeText(move) }} · {{ durationText(move.duration) }}</span>
                 <small v-if="move.studentComment">Комментарий: "{{ move.studentComment }}"</small>
               </div>
-              <Tag value="Запрос на перенос" severity="warn" />
+              <Tag severity="warn" value="Запрос на перенос" />
             </div>
             <div class="slot-actions">
-              <Button label="Подтвердить перенос" icon="pi pi-check" size="small" @click="openConfirmRequest(move)" />
-              <Button label="Отклонить" icon="pi pi-times" size="small" severity="secondary" @click="declineRequest(move)" />
+              <Button icon="pi pi-check" label="Подтвердить перенос" size="small" @click="openConfirmRequest(move)" />
+              <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(move)" />
             </div>
           </template>
         </Card>
@@ -395,22 +423,22 @@ onMounted(() => {
     </Card>
 
     <CompleteTrainingDialog
-      :open="completeTrainingDialogOpen"
       :slot="trainingToComplete"
+      :open="completeTrainingDialogOpen"
       :student="studentForTraining"
-      @update:open="completeTrainingDialogOpen = $event"
       @completed="handleTrainingCompleted"
+      @update:open="completeTrainingDialogOpen = $event"
     />
 
     <Dialog
       v-model:visible="calendarOpen"
-      modal
-      header="Календарь тренировок"
-      class="moto-dialog calendar-dialog"
       :draggable="false"
+      class="moto-dialog calendar-dialog"
+      header="Календарь тренировок"
+      modal
     >
       <div class="calendar-content">
-        <div class="calendar-filter-row" aria-label="Фильтр тренировок">
+        <div aria-label="Фильтр тренировок" class="calendar-filter-row">
           <button
             v-for="filter in calendarFilters"
             :key="filter.value"
@@ -432,7 +460,7 @@ onMounted(() => {
                     <strong>{{ training.time }} — {{ training.student }}</strong>
                     <span>{{ durationText(training.duration) }}</span>
                   </div>
-                  <Tag :value="training.statusText" :severity="training.statusSeverity" />
+                  <Tag :severity="training.statusSeverity" :value="training.statusText" />
                 </div>
 
                 <div v-if="training.status === 'requested'" class="calendar-training-details">
@@ -458,28 +486,28 @@ onMounted(() => {
                 </div>
 
                 <div v-if="training.status === 'requested' || training.status === 'reschedule'" class="slot-actions">
-                  <Button label="Подтвердить" icon="pi pi-check" size="small" @click="openConfirmRequest(training)" />
-                  <Button label="Отклонить" icon="pi pi-times" size="small" severity="secondary" @click="declineRequest(training)" />
+                  <Button icon="pi pi-check" label="Подтвердить" size="small" @click="openConfirmRequest(training)" />
+                  <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(training)" />
                 </div>
 
                 <div v-else-if="training.status === 'confirmed'" class="slot-actions">
                   <Button
                     v-if="training.finalLocationUrl"
-                    label="Открыть локацию"
                     icon="pi pi-map-marker"
-                    size="small"
+                    label="Открыть локацию"
                     severity="secondary"
+                    size="small"
                     @click="openLocation(training.finalLocationUrl)"
                   />
-                  <Button label="Проведено" icon="pi pi-check-circle" size="small" @click="openCompleteTrainingDialog(training)" />
+                  <Button icon="pi pi-check-circle" label="Проведено" size="small" @click="openCompleteTrainingDialog(training)" />
                 </div>
 
                 <Button
                   v-else-if="training.status === 'completed'"
-                  label="Открыть отчет"
                   icon="pi pi-file"
-                  size="small"
+                  label="Открыть отчет"
                   severity="secondary"
+                  size="small"
                   @click="openTrainingReport(training)"
                 />
               </template>
@@ -492,11 +520,11 @@ onMounted(() => {
     </Dialog>
 
     <Dialog
-      :visible="Boolean(selectedReportTraining)"
-      modal
-      header="Отчет тренировки"
-      class="moto-dialog"
       :draggable="false"
+      :visible="Boolean(selectedReportTraining)"
+      class="moto-dialog"
+      header="Отчет тренировки"
+      modal
       @update:visible="selectedReportTraining = null"
     >
       <div v-if="selectedReportTraining" class="form-stack">
@@ -521,10 +549,10 @@ onMounted(() => {
           <div v-if="selectedReportTraining.history?.videoUrl">
             <span>Видео</span>
             <a
-              class="location-link primary"
               :href="selectedReportTraining.history.videoUrl"
-              target="_blank"
+              class="location-link primary"
               rel="noreferrer"
+              target="_blank"
             >
               Открыть видео в Telegram
             </a>
@@ -533,7 +561,7 @@ onMounted(() => {
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="confirmDialogOpen" modal header="Подтвердить запись" class="moto-dialog">
+    <Dialog v-model:visible="confirmDialogOpen" class="moto-dialog" header="Подтвердить запись" modal>
       <div v-if="requestToConfirm" class="form-stack">
         <div class="booking-summary">
           <span>{{ requestToConfirm.student }}</span>
@@ -565,9 +593,9 @@ onMounted(() => {
           Комментарий Никиты
           <Textarea
             v-model="finalLocationForm.instructorComment"
-            rows="3"
             auto-resize
             placeholder="Например: встречаемся у въезда на площадку, возьмите закрытую обувь"
+            rows="3"
           />
         </label>
         <Button

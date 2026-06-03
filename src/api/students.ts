@@ -1,6 +1,6 @@
-import { getJson, patchJson, postJson } from './client'
-import { levelToApi, normalizeStudent, type ApiRecord } from './normalizers'
-import type { Student } from '../mock/types'
+import {getJson, patchJson, postJson} from './client'
+import {type ApiRecord, levelToApi, normalizeStudent} from './normalizers'
+import type {Student} from '../mock/types'
 
 export type StudentPayload = {
   name: string
@@ -30,7 +30,7 @@ export async function updateStudent(studentId: string, payload: Partial<StudentP
 }
 
 export function normalizeStudents(payload: ApiRecord[], fallbacks: Student[] = []) {
-  return payload.map((student, index) => normalizeStudent(student, fallbacks[index], index))
+  return payload.map((student, index) => normalizeStudent(student, fallbacks[index]))
 }
 
 export function normalizeStudentResponse(payload: ApiRecord, fallback?: Student) {

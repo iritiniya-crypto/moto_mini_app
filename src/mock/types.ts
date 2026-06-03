@@ -18,7 +18,7 @@ export type TrainingPackage = {
 }
 
 export type Student = {
-  id: number
+  id: string
   apiId?: string
   name: string
   status: string
@@ -33,7 +33,7 @@ export type Student = {
   trainingPackage?: TrainingPackage
 }
 
-export type TrainingHistory = {
+export interface TrainingHistory {
   id: number
   apiId?: string
   slotId?: number
@@ -78,7 +78,7 @@ export type Video = {
 export type TrainingReport = {
   id: number
   apiId?: string
-  studentId: number
+  studentId: string
   slotId: number
   date: string
   duration: string
@@ -108,7 +108,7 @@ export type BookingSlot = {
   title?: string
   location?: string
   studentName?: string
-  studentId?: number
+  studentId?: string
   studentApiId?: string
   preference?: string
   studentComment?: string

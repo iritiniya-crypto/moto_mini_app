@@ -1,6 +1,6 @@
-import { deleteJson, getJson, patchJson, postJson } from './client'
-import { dateTimeToIso, durationMinutes, normalizeBookingSlot, type ApiRecord } from './normalizers'
-import type { BookingSlot } from '../mock/types'
+import {deleteJson, getJson, patchJson, postJson} from './client'
+import {type ApiRecord, dateTimeToIso, durationMinutes, normalizeBookingSlot} from './normalizers'
+import type {BookingSlot} from '../mock/types'
 
 export type CreateBookingSlotPayload = {
   startsAt: string
@@ -49,8 +49,12 @@ export function slotPatchToPayload(slot: Partial<BookingSlot>): UpdateBookingSlo
   }
 }
 
-export async function fetchBookingSlots(signal?: AbortSignal) {
+export async function fetchAllBookingSlots(signal?: AbortSignal) {
   return getJson<ApiRecord[]>('/booking-slots', signal)
+}
+
+export async function fetchStudentBookingSlots(userId: string, signal?: AbortSignal) {
+  return getJson<ApiRecord[]>(`/booking-slots/${userId}`, signal)
 }
 
 export async function fetchInstructorCalendar(signal?: AbortSignal) {

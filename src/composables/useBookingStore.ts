@@ -1,12 +1,13 @@
-import { computed, ref } from 'vue'
+import {computed, ref} from 'vue'
 import {
   cancelBookingSlot,
   confirmBookingSlot,
   createBookingSlot,
   declineBookingSlot,
   deleteBookingSlot,
-  fetchBookingSlots,
+  fetchAllBookingSlots,
   fetchInstructorCalendar,
+  fetchStudentBookingSlots,
   normalizeBookingSlots,
   requestBookingSlot,
   rescheduleBookingSlot,
@@ -14,10 +15,10 @@ import {
   slotToCreatePayload,
   updateBookingSlot,
 } from '../api/bookingSlots'
-import { TEST_USER_ID } from '../api/client'
-import { normalizeBookingSlot, type ApiRecord } from '../api/normalizers'
-import { bookingSlots } from '../mock/booking'
-import type { BookingSlot } from '../mock/types'
+import {TEST_USER_ID} from '../api/client'
+import {type ApiRecord, normalizeBookingSlot} from '../api/normalizers'
+import {bookingSlots} from '../mock/booking'
+import type {BookingSlot} from '../mock/types'
 
 const slots = ref<BookingSlot[]>(bookingSlots.map((slot) => ({ ...slot })))
 const activeStudentSlotId = ref<number | null>(null)
@@ -134,7 +135,7 @@ export function useBookingStore() {
     slots.value.filter((slot) => slot.status === 'confirmed'),
   )
 
-  function getStudentActiveSlots(studentId: number) {
+  function getStudentActiveSlots(studentId: string) {
     return slots.value.filter(
       (slot) =>
         slot.studentId === studentId &&
@@ -262,7 +263,7 @@ export function useBookingStore() {
 
   async function requestSlot(
     id: number,
-    studentId: number,
+    studentId: string,
     preference: string,
     studentComment: string,
     status: BookingSlot['status'] = 'requested',
@@ -427,12 +428,26 @@ export function useBookingStore() {
     }
   }
 
-  async function loadBookingSlots() {
+  async function loadAllBookingSlots() {
     isBookingLoading.value = true
     bookingError.value = ''
 
     try {
-      const payload = await fetchBookingSlots()
+      const payload = await fetchAllBookingSlots()
+      slots.value = normalizeBookingSlots(payload)
+    } catch {
+      bookingError.value = 'Backend booking-slots недоступен, используем локальные слоты.'
+    } finally {
+      isBookingLoading.value = false
+    }
+  }
+
+  async function loadStudentBookingSlots(userId: string) {
+    isBookingLoading.value = true
+    bookingError.value = ''
+
+    try {
+      const payload = await fetchStudentBookingSlots(userId)
       slots.value = normalizeBookingSlots(payload)
     } catch {
       bookingError.value = 'Backend booking-slots недоступен, используем локальные слоты.'
@@ -450,7 +465,7 @@ export function useBookingStore() {
       const calendarSlots = normalizeBookingSlots(calendarPayload)
 
       try {
-        const bookingPayload = await fetchBookingSlots()
+        const bookingPayload = await fetchAllBookingSlots()
         slots.value = mergeSlotLists(normalizeBookingSlots(bookingPayload), calendarSlots)
       } catch {
         slots.value = calendarSlots
@@ -475,7 +490,8 @@ export function useBookingStore() {
     getStudentActiveSlots,
     isBookingLoading,
     bookingError,
-    loadBookingSlots,
+    loadAllBookingSlots,
+    loadStudentBookingSlots,
     loadInstructorCalendar,
     removeSlot,
     requestSlot,

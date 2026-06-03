@@ -1,11 +1,11 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { TEST_USER_ID } from '../api/client'
-import { fetchHealth, type HealthResponse } from '../api/health'
-import { fetchSkills, normalizeSkillDefinitions } from '../api/skills'
-import { fetchStudentProfile, normalizeStudentProfile } from '../api/studentProfile'
-import { fetchStudents, normalizeStudents } from '../api/students'
-import type { Skill, Student } from '../mock/types'
+import {defineStore} from 'pinia'
+import {ref} from 'vue'
+import {TEST_USER_ID} from '../api/client'
+import {fetchHealth, type HealthResponse} from '../api/health'
+import {fetchSkills, normalizeSkillDefinitions} from '../api/skills'
+import {fetchStudentProfile, normalizeStudentProfile} from '../api/studentProfile'
+import {fetchStudents, normalizeStudents} from '../api/students'
+import type {Skill, Student} from '../mock/types'
 
 export const useUserStore = defineStore('user', () => {
   const health = ref<HealthResponse | null>(null)
@@ -62,7 +62,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function loadProfile(studentId: string | number, fallbackStudent: Student) {
+  async function loadProfile(studentId: string) {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 6000)
     const apiStudentId = TEST_USER_ID || studentId
@@ -73,9 +73,8 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       const payload = await fetchStudentProfile(apiStudentId, controller.signal)
-      profile.value = normalizeStudentProfile(payload, fallbackStudent)
+      profile.value = normalizeStudentProfile(payload)
     } catch {
-      profile.value = fallbackStudent
       profileError.value = 'Backend недоступен, показываем локальные данные.'
       usingFallback.value = true
     } finally {

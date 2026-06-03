@@ -1,28 +1,20 @@
-<script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
+<script lang="ts" setup>
+import {computed, onMounted} from 'vue'
+import {storeToRefs} from 'pinia'
 import SectionHeader from '../components/SectionHeader.vue'
 import VideoCard from '../components/VideoCard.vue'
-import { useTrainingStore } from '../composables/useTrainingStore'
-import { useUserStore } from '../stores/userStore'
-import { students } from '../mock/students'
+import {useUserStore} from '../stores/userStore'
+import {TEST_USER_ID} from "@/api/client.ts";
 
-const { getStudentTrainingVideos } = useTrainingStore()
+const currentStudentId = TEST_USER_ID
 const userStore = useUserStore()
 const { profile } = storeToRefs(userStore)
 const videos = computed(() =>
-  (profile.value?.trainingHistory?.filter((history) => history.videoUrl) || getStudentTrainingVideos(students[0].id)).map((history) => ({
-    id: history.id,
-    title: history.videoTitle || history.theme,
-    date: history.date,
-    theme: history.theme,
-    comment: history.videoComment || history.comment,
-    telegramUrl: history.videoUrl || '',
-  })),
-)
+  (profile.value?.trainingHistory?.filter((history) => history.videoUrl)
+))
 
 onMounted(() => {
-  userStore.loadProfile(students[0].id, students[0])
+  userStore.loadProfile(currentStudentId)
 })
 </script>
 
