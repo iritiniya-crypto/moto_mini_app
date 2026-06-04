@@ -1,7 +1,7 @@
-import { getJson, putJson } from './client'
-import { normalizeSkills, type ApiRecord } from './normalizers'
-import {API_ENDPOINTS} from '../types/api'
-import type { Skill, UpsertStudentSkillRequest } from '../types/skill'
+import {getJson, putJson} from './client'
+import {type ApiRecord, normalizeSkills} from './normalizers'
+import {API_ENDPOINTS} from '@/types/api'
+import type {Skill, UpsertStudentSkillRequest} from '@/types/skill'
 
 export async function fetchSkills(signal?: AbortSignal) {
   return getJson<ApiRecord[]>(API_ENDPOINTS.SKILLS, signal)

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import {computed, ref} from 'vue'
-import SectionHeader from '../../components/SectionHeader.vue'
+import SectionHeader from '@/components/SectionHeader.vue'
 import {
   motorcyclePrograms,
   scooterPrograms,

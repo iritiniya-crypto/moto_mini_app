@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import {computed, onMounted, ref} from 'vue'
-import {TEST_USER_ID} from '../../api/client.ts'
-import SectionHeader from '../../components/SectionHeader.vue'
-import {useBookingStore} from '../../composables/useBookingStore.ts'
-import type {BookingSlot} from '../../types/booking'
+import {TEST_USER_ID} from '@/api/client.ts'
+import SectionHeader from '@/components/SectionHeader.vue'
+import {useBookingStore} from '@/composables/useBookingStore.ts'
+import type {BookingSlot} from '@/types/booking'
 
 const props = defineProps<{
   role: 'student' | 'instructor'

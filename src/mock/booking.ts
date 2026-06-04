@@ -1,4 +1,4 @@
-import type {BookingSlot} from '../types/booking'
+import type {BookingSlot} from '@/types'
 
 export const standardLocations = [
   {

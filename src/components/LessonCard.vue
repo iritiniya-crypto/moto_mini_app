@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import type { TrainingHistory } from '../types/training'
+<script lang="ts" setup>
+import type {TrainingHistory} from '@/types/training'
 
 defineProps<{
   lesson: TrainingHistory
@@ -14,7 +14,7 @@ defineProps<{
           <span>{{ lesson.date }} · {{ lesson.duration }}</span>
           <small v-if="lesson.location">Локация: {{ lesson.location }}</small>
         </div>
-        <Tag value="завершено" severity="success" />
+        <Tag severity="success" value="завершено" />
       </div>
 
       <div class="note-list lesson-report">
@@ -34,10 +34,10 @@ defineProps<{
 
       <a
         v-if="lesson.videoUrl"
-        class="location-link"
         :href="lesson.videoUrl"
-        target="_blank"
+        class="location-link"
         rel="noreferrer"
+        target="_blank"
       >
         Открыть видео в Telegram
       </a>

@@ -1,5 +1,5 @@
-import { getJson } from './client'
-import {API_ENDPOINTS, type ApiHealthResponse} from '../types/api'
+import {getJson} from './client'
+import {API_ENDPOINTS, type ApiHealthResponse} from '@/types/api'
 
 export type HealthResponse = ApiHealthResponse
 

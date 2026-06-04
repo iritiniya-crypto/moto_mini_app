@@ -1,6 +1,6 @@
 import {deleteJson, getJson, patchJson, postJson} from './client'
 import {type ApiRecord, dateTimeToIso, durationMinutes, normalizeBookingSlot} from './normalizers'
-import {API_ENDPOINTS, type DeleteResponse} from '../types/api'
+import {API_ENDPOINTS, type DeleteResponse} from '@/types/api'
 import type {
   BookingSlot,
   ConfirmBookingSlotRequest,
@@ -9,7 +9,7 @@ import type {
   RequestBookingSlotRequest,
   RescheduleBookingSlotRequest,
   UpdateBookingSlotRequest,
-} from '../types/booking'
+} from '@/types/booking'
 
 function bookingSlotsPath(query: FindBookingSlotsQuery = {}) {
   const params = new URLSearchParams()

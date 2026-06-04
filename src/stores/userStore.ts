@@ -1,12 +1,11 @@
 import {defineStore} from 'pinia'
 import {ref} from 'vue'
-import {TEST_USER_ID} from '../api/client'
-import {fetchHealth, type HealthResponse} from '../api/health'
-import {fetchSkills, normalizeSkillDefinitions} from '../api/skills'
-import {fetchStudentProfile, normalizeStudentProfile} from '../api/studentProfile'
-import {fetchStudents, normalizeStudents} from '../api/students'
-import type {Skill} from '../types/skill'
-import type {Student} from '../types/student'
+import {TEST_USER_ID} from '@/api/client'
+import {fetchHealth, type HealthResponse} from '@/api/health'
+import {fetchSkills, normalizeSkillDefinitions} from '@/api/skills'
+import {fetchStudentProfile, normalizeStudentProfile} from '@/api/studentProfile'
+import {fetchStudents, normalizeStudents} from '@/api/students'
+import type {Skill, Student} from '@/types'
 
 export const useUserStore = defineStore('user', () => {
   const health = ref<HealthResponse | null>(null)

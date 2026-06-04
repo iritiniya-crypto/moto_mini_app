@@ -14,10 +14,10 @@ import {
   slotPatchToPayload,
   slotToCreatePayload,
   updateBookingSlot,
-} from '../api/bookingSlots'
-import {TEST_USER_ID} from '../api/client'
-import {type ApiRecord, normalizeBookingSlot} from '../api/normalizers'
-import type {BookingSlot} from '../types/booking'
+} from '@/api/bookingSlots'
+import {TEST_USER_ID} from '@/api/client'
+import {type ApiRecord, normalizeBookingSlot} from '@/api/normalizers'
+import type {BookingSlot} from '@/types/booking'
 
 const slots = ref<BookingSlot[]>([])
 const activeStudentSlotId = ref<number | null>(null)

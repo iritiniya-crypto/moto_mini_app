@@ -1,11 +1,10 @@
-<script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useBookingStore } from '../composables/useBookingStore'
-import { useTrainingStore } from '../composables/useTrainingStore'
-import { useUserStore } from '../stores/userStore'
-import type {BookingSlot} from '../types/booking'
-import type {Skill} from '../types/skill'
-import type {Student} from '../types/student'
+<script lang="ts" setup>
+import {computed, ref, watch} from 'vue'
+import {useBookingStore} from '@/composables/useBookingStore'
+import {useTrainingStore} from '@/composables/useTrainingStore'
+import {useUserStore} from '@/stores/userStore'
+import type {BookingSlot, Skill} from '@/types'
+import type {Student} from '@/types/student'
 
 interface Props {
   open: boolean
@@ -155,10 +154,10 @@ watch(
   <Dialog
     v-if="open"
     v-model:visible="dialogVisible"
-    modal
-    header="Завершить тренировку"
-    class="moto-dialog complete-training-dialog"
     :draggable="false"
+    class="moto-dialog complete-training-dialog"
+    header="Завершить тренировку"
+    modal
   >
     <div v-if="slot && student" class="form-stack">
       <div class="note-list">
@@ -184,7 +183,7 @@ watch(
         <label class="field-label">Что тренировали</label>
         <div class="skill-check-grid">
           <label v-for="skill in availableSkills" :key="skill.id" class="skill-check-item">
-            <input v-model="selectedSkills" type="checkbox" :value="skill" />
+            <input v-model="selectedSkills" :value="skill" type="checkbox" />
             <span>{{ skill.name }}</span>
           </label>
         </div>
@@ -194,9 +193,9 @@ watch(
         Что получилось
         <Textarea
           v-model="improved"
-          rows="3"
           auto-resize
           placeholder="Например: стала ровнее скорость, меньше резких движений рулем"
+          rows="3"
         />
       </label>
 
@@ -204,9 +203,9 @@ watch(
         На что обратить внимание
         <Textarea
           v-model="nextFocus"
-          rows="3"
           auto-resize
           placeholder="Например: смотреть в выход, мягче работать газом, расслабить руки"
+          rows="3"
         />
       </label>
 
@@ -219,11 +218,11 @@ watch(
             <input
                 v-model="skill.newValue"
                 class="skill-percent-input"
-                type="number"
-                min="0"
                 max="100"
+                min="0"
+                type="number"
             />
-            <Button icon="pi pi-trash" size="small" severity="secondary" @click="" />
+            <Button icon="pi pi-trash" severity="secondary" size="small" @click="" />
           </label>
         </div>
       </section>
@@ -235,7 +234,7 @@ watch(
 
       <div class="dialog-actions">
         <Button label="Отмена" severity="secondary" @click="closeDialog" />
-        <Button label="Сохранить отчет" icon="pi pi-check" :disabled="!isFormValid || isSaving" @click="saveReport" />
+        <Button :disabled="!isFormValid || isSaving" icon="pi pi-check" label="Сохранить отчет" @click="saveReport" />
       </div>
     </div>
   </Dialog>

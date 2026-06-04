@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import {computed, onMounted} from 'vue'
 import {storeToRefs} from 'pinia'
-import SectionHeader from '../components/SectionHeader.vue'
-import VideoCard from '../components/VideoCard.vue'
-import {useUserStore} from '../stores/userStore'
+import SectionHeader from '@/components/SectionHeader.vue'
+import VideoCard from '@/components/VideoCard.vue'
+import {useUserStore} from '@/stores/userStore'
 import {TEST_USER_ID} from "@/api/client.ts";
-import type {Video} from '../types/training'
+import type {Video} from '@/types/training'
 
 const currentStudentId = TEST_USER_ID
 const userStore = useUserStore()

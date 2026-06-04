@@ -1,4 +1,4 @@
-import type { Video } from '../types/training'
+import type {Video} from '@/types'
 
 export const videos: Video[] = [
   {

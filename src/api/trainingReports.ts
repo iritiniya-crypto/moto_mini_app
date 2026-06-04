@@ -1,7 +1,7 @@
-import { postJson } from './client'
-import { levelToApi } from './normalizers'
-import {API_ENDPOINTS} from '../types/api'
-import type {CreateTrainingReportRequest, CreateTrainingReportResponse} from '../types/training'
+import {postJson} from './client'
+import {levelToApi} from './normalizers'
+import {API_ENDPOINTS} from '@/types/api'
+import type {CreateTrainingReportRequest, CreateTrainingReportResponse} from '@/types/training'
 
 export type CreateTrainingReportPayload = Omit<CreateTrainingReportRequest, 'levelUpdate'> & {
   levelUpdate?: string

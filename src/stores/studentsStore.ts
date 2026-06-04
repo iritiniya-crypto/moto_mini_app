@@ -1,7 +1,7 @@
 import {defineStore} from 'pinia'
 import {ref} from 'vue'
-import {fetchStudentPackage, normalizeTrainingPackage, packageToPayload, upsertStudentPackage} from '../api/packages'
-import {fetchStudentSkills, normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi} from '../api/skills'
+import {fetchStudentPackage, normalizeTrainingPackage, packageToPayload, upsertStudentPackage} from '@/api/packages'
+import {fetchStudentSkills, normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi} from '@/api/skills'
 import {
   createStudent,
   fetchStudents,
@@ -9,8 +9,8 @@ import {
   normalizeStudents,
   type StudentPayload,
   updateStudent,
-} from '../api/students'
-import type {Student} from '../types/student'
+} from '@/api/students'
+import type {Student} from '@/types/student'
 
 export const useStudentsStore = defineStore('students', () => {
   const students = ref<Student[]>([])

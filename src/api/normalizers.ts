@@ -1,8 +1,8 @@
-import type {BookingSlot} from '../types/booking'
-import type {PaymentStatus, TrainingPackage, TrainingPackagePaymentStatus} from '../types/package'
-import type {Skill} from '../types/skill'
-import type {Student} from '../types/student'
-import type {TrainingHistory} from '../types/training'
+import type {BookingSlot} from '@/types/booking'
+import type {PaymentStatus, TrainingPackage, TrainingPackagePaymentStatus} from '@/types/package'
+import type {Skill} from '@/types/skill'
+import type {Student} from '@/types/student'
+import type {TrainingHistory} from '@/types/training'
 
 export type ApiRecord = Record<string, any>
 

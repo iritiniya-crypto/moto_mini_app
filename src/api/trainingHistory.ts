@@ -1,7 +1,7 @@
-import { postJson } from './client'
-import { dateTimeToIso, normalizeHistoryItem, type ApiRecord } from './normalizers'
-import {API_ENDPOINTS} from '../types/api'
-import type { CreateManualTrainingHistoryRequest, TrainingHistory } from '../types/training'
+import {postJson} from './client'
+import {type ApiRecord, dateTimeToIso, normalizeHistoryItem} from './normalizers'
+import {API_ENDPOINTS} from '@/types/api'
+import type {CreateManualTrainingHistoryRequest, TrainingHistory} from '@/types/training'
 
 export async function createManualTrainingHistory(studentId: string, payload: CreateManualTrainingHistoryRequest) {
   return postJson<ApiRecord, CreateManualTrainingHistoryRequest>(API_ENDPOINTS.MANUAL_TRAINING_HISTORY(studentId), payload)

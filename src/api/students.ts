@@ -1,7 +1,7 @@
 import {getJson, patchJson, postJson} from './client'
 import {type ApiRecord, levelToApi, normalizeStudent} from './normalizers'
-import {API_ENDPOINTS} from '../types/api'
-import type {CreateStudentRequest, Student, UpdateStudentRequest} from '../types/student'
+import {API_ENDPOINTS} from '@/types/api'
+import type {CreateStudentRequest, Student, UpdateStudentRequest} from '@/types/student'
 
 export type StudentPayload = {
   name: string

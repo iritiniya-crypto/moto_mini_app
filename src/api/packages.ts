@@ -1,7 +1,7 @@
-import { getJson, putJson } from './client'
-import { normalizePackage, paymentStatusToApi, type ApiRecord } from './normalizers'
-import {API_ENDPOINTS} from '../types/api'
-import type { TrainingPackage, UpsertTrainingPackageRequest } from '../types/package'
+import {getJson, putJson} from './client'
+import {type ApiRecord, normalizePackage, paymentStatusToApi} from './normalizers'
+import {API_ENDPOINTS} from '@/types/api'
+import type {TrainingPackage, UpsertTrainingPackageRequest} from '@/types/package'
 
 export async function fetchStudentPackage(studentId: string, signal?: AbortSignal) {
   return getJson<ApiRecord>(API_ENDPOINTS.STUDENT_PACKAGE(studentId), signal)
