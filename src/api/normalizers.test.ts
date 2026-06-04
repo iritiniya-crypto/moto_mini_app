@@ -1,0 +1,93 @@
+import { describe, expect, it } from 'vitest'
+import {
+  dateTimeToIso,
+  formatDate,
+  formatTime,
+  levelFromApi,
+  levelToApi,
+  normalizeBookingSlot,
+  normalizeStudent,
+  numericId,
+  paymentStatus,
+} from './normalizers'
+
+describe('normalizers', () => {
+  it('numericId maps stable values for string ids', () => {
+    const first = numericId('slot-1', 1)
+    const second = numericId('slot-1', 2)
+
+    expect(first).toBe(second)
+    expect(first).toBeGreaterThanOrEqual(1000)
+  })
+
+  it('formats date and time from ISO strings', () => {
+    const iso = '2026-06-10T14:30:00.000Z'
+
+    expect(formatDate(iso)).toContain('июня')
+    expect(formatTime(iso)).toMatch(/\d{2}:\d{2}/)
+  })
+
+  it('maps level values between API and UI labels', () => {
+    expect(levelToApi('Город')).toBe('ADVANCED')
+    expect(levelFromApi('INTERMEDIATE')).toBe('Уверенный старт')
+  })
+
+  it('maps payment statuses from API values', () => {
+    expect(paymentStatus('paid')).toBe('оплачено')
+    expect(paymentStatus('partial')).toBe('частично оплачено')
+  })
+
+  it('builds iso datetime from russian date and time strings', () => {
+    const iso = dateTimeToIso('12 июня', '10:45')
+
+    expect(iso).toContain('2026-06')
+    expect(iso).toContain('T')
+  })
+
+  it('normalizes booking slot fields', () => {
+    const slot = normalizeBookingSlot(
+      {
+        id: 'slot-api-id',
+        startsAt: '2026-06-10T10:00:00.000Z',
+        endsAt: '2026-06-10T11:30:00.000Z',
+        status: 'confirmed',
+        student: { name: 'Иван' },
+        studentId: 'student-api-id',
+        finalLocation: 'Площадка',
+      },
+      0,
+    )
+
+    expect(slot.apiId).toBe('slot-api-id')
+    expect(slot.status).toBe('confirmed')
+    expect(slot.studentName).toBe('Иван')
+    expect(slot.studentApiId).toBe('student-api-id')
+    expect(slot.finalLocation).toBe('Площадка')
+  })
+
+  it('normalizes student profile core fields', () => {
+    const student = normalizeStudent({
+      id: 'student-api-id',
+      name: 'Анна',
+      level: 'BASIC',
+      createdAt: '2026-06-01T10:00:00.000Z',
+      updatedAt: '2026-06-02T10:00:00.000Z',
+      skills: [
+        {
+          skillId: 'skill-api-id',
+          progressPercent: 80,
+          skill: { id: 'skill-api-id', name: 'Овал' },
+        },
+      ],
+      trainingHistory: [],
+      packages: [],
+    })
+
+    expect(student.id).toBe('student-api-id')
+    expect(student.name).toBe('Анна')
+    expect(student.level).toBe('База')
+    expect(student.createdAt).toBe('2026-06-01T10:00:00.000Z')
+    expect(student.skills?.[0].name).toBe('Овал')
+  })
+})
+
