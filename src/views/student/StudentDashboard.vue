@@ -54,7 +54,7 @@ function togglePlanDay(day: string) {
           <template #content>
             <div class="program-top">
               <div>
-                <p>{{program.duration}}</p>
+                <Tag :value="program.duration"/>
                 <h3>{{ program.title }}</h3>
                 <span>{{ program.subtitle }}</span>
               </div>
@@ -105,7 +105,7 @@ function togglePlanDay(day: string) {
     >
       <div v-if="selectedProgram" class="form-stack">
         <div>
-          <p>{{selectedProgram.duration}}</p>
+          <Tag :value="selectedProgram.duration"/>
           <h2>{{ selectedProgram.title }}</h2>
           <p>{{ selectedProgram.subtitle }}</p>
         </div>
