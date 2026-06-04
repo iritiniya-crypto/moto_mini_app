@@ -261,6 +261,8 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
   return {
     id: pick(source, 'id') || '',
     apiId: typeof pick(source, 'id') === 'string' ? pick(source, 'id') : fallback?.apiId,
+    createdAt: pick(source, 'createdAt', 'created_at') ?? fallback?.createdAt,
+    updatedAt: pick(source, 'updatedAt', 'updated_at') ?? fallback?.updatedAt,
     name: String(pick(source, 'name') ?? pick<ApiRecord>(source, 'user')?.displayName ?? fallback?.name ?? 'Ученик'),
     status: String(pick(source, 'status') ?? fallback?.status ?? 'активный'),
     level: levelFromApi(pick(source, 'level'), fallback?.level),

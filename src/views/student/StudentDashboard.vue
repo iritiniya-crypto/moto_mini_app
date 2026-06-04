@@ -7,7 +7,7 @@ import {
   type TheoryCard,
   theoryCards,
   type TrainingProgram,
-} from '@/mock/trainingContent.ts'
+} from '@/constants/trainingContent.ts'
 
 type VehicleMode = 'scooter' | 'motorcycle'
 

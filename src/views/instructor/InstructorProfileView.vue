@@ -9,7 +9,6 @@ import {useBookingStore} from '@/composables/useBookingStore.ts'
 import {useStudentsStore} from '@/stores/studentsStore.ts'
 import {useUserStore} from '@/stores/userStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
-import {newStudents as mockNewStudents} from '@/mock/trainingContent.ts'
 import type {BookingSlot} from '@/types/booking'
 import type {PaymentStatus} from '@/types/package'
 import type {Skill} from '@/types/skill'
@@ -20,6 +19,16 @@ import {durationOptions} from "@/dictionary/durationOptions.ts";
 defineProps<{
   role: 'student' | 'instructor'
 }>()
+
+type NewStudentStatus = 'new' | 'accepted' | 'declined'
+type NewStudentListItem = {
+  id: string
+  name: string
+  username: string
+  comment: string
+  date: string
+  status: NewStudentStatus
+}
 
 const userStore = useUserStore();
 const { slots } = useBookingStore()
@@ -46,7 +55,7 @@ const completeTrainingDialogOpen = ref(false)
 const manualTrainingOpen = ref(false)
 const isManualTrainingSaving = ref(false)
 const videoOpen = ref(false)
-const newStudents = ref(mockNewStudents.map((item) => ({ ...item, status: 'new' })))
+const newStudentStatuses = ref<Record<string, Exclude<NewStudentStatus, 'new'>>>({})
 const customSkill = ref('')
 const studentName = ref('')
 const trainingPlan = ref(selectedStudent.value?.focus || '')
@@ -83,6 +92,18 @@ const newStudentForm = ref({
 
 const allStudents = computed(() => (apiStudents.value.length > 0 ? apiStudents.value : studentsStore.students))
 const activeStudents = computed(() => allStudents.value.length)
+const newStudents = computed<NewStudentListItem[]>(() => {
+  return allStudents.value
+    .filter((student) => isRecentStudent(student.createdAt))
+    .map((student) => ({
+      id: student.id,
+      name: student.name,
+      username: telegramHandle(student),
+      comment: student.focus || 'Ожидает первичную консультацию.',
+      date: formatStudentDate(student.createdAt),
+      status: newStudentStatuses.value[student.id] ?? 'new',
+    }))
+})
 
 const selectedStudentSlots = computed(() =>
   slots.value.filter(
@@ -101,13 +122,13 @@ const selectedStudentVideoSlots = computed(() =>
 onMounted(() => {
   userStore.checkHealth()
   userStore.loadSkills()
-  studentsStore.loadStudents(studentsStore.students)
+  studentsStore.loadStudents()
 })
 
 async function openStudentCard(nextStudent: Student) {
   const localStudent = await updateStudent(nextStudent.id, nextStudent)
   selectedStudent.value = nextStudent
-  selectedStudentHistory.value = localStudent.trainingHistory ?? nextStudent.trainingHistory ?? []
+  selectedStudentHistory.value = localStudent?.trainingHistory ?? nextStudent.trainingHistory ?? []
   studentName.value = nextStudent.name
   level.value = nextStudent.level
   packageTotal.value = nextStudent.trainingPackage?.total ?? 0
@@ -142,6 +163,29 @@ async function openStudentCard(nextStudent: Student) {
 
 function telegramHandle(nextStudent: Student) {
   return nextStudent.telegramUsername || `@${nextStudent.name.split(' ')[0].toLowerCase()}_moto`
+}
+
+function formatStudentDate(value?: string) {
+  if (!value) {
+    return 'дата не указана'
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date(value)).replace(' г.', '')
+}
+
+function isRecentStudent(createdAt?: string) {
+  if (!createdAt) {
+    return false
+  }
+
+  const createdAtMs = new Date(createdAt).getTime()
+
+  if (!Number.isFinite(createdAtMs)) {
+    return false
+  }
+
+  const threeDaysMs = 3 * 24 * 60 * 60 * 1000
+  return Date.now() - createdAtMs <= threeDaysMs
 }
 
 function durationText(duration: string) {
@@ -363,18 +407,12 @@ async function saveTrainingVideo() {
   videoOpen.value = false
 }
 
-function acceptNewStudent(id: number) {
-  const item = newStudents.value.find((newStudent) => newStudent.id === id)
-  if (item) {
-    item.status = 'accepted'
-  }
+function acceptNewStudent(id: string) {
+  newStudentStatuses.value[id] = 'accepted'
 }
 
-function declineNewStudent(id: number) {
-  const item = newStudents.value.find((newStudent) => newStudent.id === id)
-  if (item) {
-    item.status = 'declined'
-  }
+function declineNewStudent(id: string) {
+  newStudentStatuses.value[id] = 'declined'
 }
 
 async function addManualStudent() {

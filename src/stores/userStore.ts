@@ -33,16 +33,16 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function loadStudents(fallbackStudents: Student[] = []) {
+  async function loadStudents() {
     isStudentsLoading.value = true
     studentsError.value = ''
 
     try {
       const payload = await fetchStudents()
-      students.value = normalizeStudents(payload, fallbackStudents)
+      students.value = normalizeStudents(payload)
     } catch {
-      students.value = fallbackStudents
-      studentsError.value = 'Backend недоступен, список учеников взят из локальных данных.'
+      students.value = []
+      studentsError.value = 'Backend недоступен, список учеников не загружен.'
     } finally {
       isStudentsLoading.value = false
     }
@@ -76,7 +76,8 @@ export const useUserStore = defineStore('user', () => {
       const payload = await fetchStudentProfile(apiStudentId, controller.signal)
       profile.value = normalizeStudentProfile(payload)
     } catch {
-      profileError.value = 'Backend недоступен, показываем локальные данные.'
+      profile.value = null
+      profileError.value = 'Backend недоступен, профиль не загружен.'
       usingFallback.value = true
     } finally {
       window.clearTimeout(timeout)

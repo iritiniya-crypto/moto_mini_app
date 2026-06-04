@@ -29,6 +29,8 @@ export interface ApiStudentProfile extends ApiStudent {
 export type Student = {
   id: string
   apiId?: string
+  createdAt?: string
+  updatedAt?: string
   name: string
   status: string
   level: string
