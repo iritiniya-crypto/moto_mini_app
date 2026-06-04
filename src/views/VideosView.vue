@@ -5,13 +5,23 @@ import SectionHeader from '../components/SectionHeader.vue'
 import VideoCard from '../components/VideoCard.vue'
 import {useUserStore} from '../stores/userStore'
 import {TEST_USER_ID} from "@/api/client.ts";
+import type {Video} from '../types/training'
 
 const currentStudentId = TEST_USER_ID
 const userStore = useUserStore()
 const { profile } = storeToRefs(userStore)
-const videos = computed(() =>
-  (profile.value?.trainingHistory?.filter((history) => history.videoUrl)
-))
+const videos = computed<Video[]>(() =>
+  (profile.value?.trainingHistory || [])
+    .filter((history) => history.videoUrl)
+    .map((history) => ({
+      id: history.id,
+      title: history.videoTitle || history.theme,
+      date: history.date,
+      theme: history.theme,
+      comment: history.videoComment || history.comment,
+      telegramUrl: history.videoUrl || '',
+    })),
+)
 
 onMounted(() => {
   userStore.loadProfile(currentStudentId)

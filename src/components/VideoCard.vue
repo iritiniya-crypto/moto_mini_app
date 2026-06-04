@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Video } from '../mock/types'
+import type { Video } from '../types/training'
 
 defineProps<{
   video: Video

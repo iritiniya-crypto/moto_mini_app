@@ -1,25 +1,17 @@
 import { getJson, putJson } from './client'
 import { normalizePackage, paymentStatusToApi, type ApiRecord } from './normalizers'
-import type { TrainingPackage } from '../mock/types'
-
-export type UpsertTrainingPackagePayload = {
-  totalTrainings: number
-  completedTrainings: number
-  paymentStatus: string
-  startedAt?: string
-  endedAt?: string
-  isActive: boolean
-}
+import {API_ENDPOINTS} from '../types/api'
+import type { TrainingPackage, UpsertTrainingPackageRequest } from '../types/package'
 
 export async function fetchStudentPackage(studentId: string, signal?: AbortSignal) {
-  return getJson<ApiRecord>(`/students/${studentId}/package`, signal)
+  return getJson<ApiRecord>(API_ENDPOINTS.STUDENT_PACKAGE(studentId), signal)
 }
 
-export async function upsertStudentPackage(studentId: string, payload: UpsertTrainingPackagePayload) {
-  return putJson<ApiRecord, UpsertTrainingPackagePayload>(`/students/${studentId}/package`, payload)
+export async function upsertStudentPackage(studentId: string, payload: UpsertTrainingPackageRequest) {
+  return putJson<ApiRecord, UpsertTrainingPackageRequest>(API_ENDPOINTS.STUDENT_PACKAGE(studentId), payload)
 }
 
-export function packageToPayload(trainingPackage: TrainingPackage): UpsertTrainingPackagePayload {
+export function packageToPayload(trainingPackage: TrainingPackage): UpsertTrainingPackageRequest {
   return {
     totalTrainings: trainingPackage.total,
     completedTrainings: trainingPackage.completed,

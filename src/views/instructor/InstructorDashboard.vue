@@ -5,7 +5,9 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
 import {standardLocations} from '@/mock/booking.ts'
-import type {BookingSlot, Student, TrainingHistory} from '@/mock/types.ts'
+import type {BookingSlot} from '@/types/booking'
+import type {Student} from '@/types/student'
+import type {TrainingHistory} from '@/types/training'
 import {useUserStore} from "@/stores/userStore.ts";
 
 const userStore = useUserStore()

@@ -3,7 +3,7 @@ import {computed, onMounted, ref} from 'vue'
 import {TEST_USER_ID} from '../../api/client.ts'
 import SectionHeader from '../../components/SectionHeader.vue'
 import {useBookingStore} from '../../composables/useBookingStore.ts'
-import type {BookingSlot} from '../../mock/types.ts'
+import type {BookingSlot} from '../../types/booking'
 
 const currentStudentId = TEST_USER_ID
 const { activeStudentSlot, cancelSlot, loadStudentBookingSlots, requestSlot, rescheduleSlot, availableSlots, slots } = useBookingStore()
@@ -141,7 +141,7 @@ async function confirmCancelTraining() {
   }
 
   await cancelSlot(trainingToCancel.value.id)
-  await loadStudentBookingSlots()
+  await loadStudentBookingSlots(currentStudentId)
   if (selectedSlotId.value === trainingToCancel.value.id) {
     selectedSlotId.value = null
   }
@@ -153,7 +153,7 @@ async function confirmCancelTraining() {
 }
 
 onMounted(() => {
-  loadStudentBookingSlots()
+  loadStudentBookingSlots(currentStudentId)
 })
 </script>
 

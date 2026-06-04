@@ -4,7 +4,9 @@ import {skillsToPayload, updateStudentSkillsApi} from '../api/skills'
 import {createManualTrainingHistory, manualTrainingToPayload} from '../api/trainingHistory'
 import {createTrainingReportApi} from '../api/trainingReports'
 import {createTrainingVideo} from '../api/videos'
-import type {Student, TrainingHistory, TrainingPackage, TrainingReport} from '../mock/types'
+import type {Student} from '../types/student'
+import type {TrainingHistory, TrainingReport} from '../types/training'
+import type {TrainingPackage} from '../types/package'
 import {useUserStore} from "@/stores/userStore.ts";
 
 const trainingReports = ref<TrainingReport[]>([])

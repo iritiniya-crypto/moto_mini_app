@@ -3,7 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
 import { skills } from '../mock/skills'
-import type {BookingSlot, Skill, Student} from '../mock/types'
+import type {BookingSlot} from '../types/booking'
+import type {Skill} from '../types/skill'
+import type {Student} from '../types/student'
 
 interface Props {
   open: boolean

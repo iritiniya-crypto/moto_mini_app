@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TrainingHistory } from '../mock/types'
+import type { TrainingHistory } from '../types/training'
 
 defineProps<{
   lesson: TrainingHistory

@@ -1,4 +1,8 @@
-import type {BookingSlot, PaymentStatus, Skill, Student, TrainingHistory, TrainingPackage} from '../mock/types'
+import type {BookingSlot} from '../types/booking'
+import type {PaymentStatus, TrainingPackage, TrainingPackagePaymentStatus} from '../types/package'
+import type {Skill} from '../types/skill'
+import type {Student} from '../types/student'
+import type {TrainingHistory} from '../types/training'
 
 export type ApiRecord = Record<string, any>
 
@@ -127,8 +131,8 @@ export function levelFromApi(value: unknown, fallback = 'Новичок') {
   return map[String(value)] || String(value || fallback)
 }
 
-export function paymentStatusToApi(value: PaymentStatus) {
-  const map: Record<PaymentStatus, string> = {
+export function paymentStatusToApi(value: PaymentStatus): TrainingPackagePaymentStatus {
+  const map: Record<PaymentStatus, TrainingPackagePaymentStatus> = {
     оплачено: 'paid',
     'не оплачено': 'unpaid',
     'частично оплачено': 'partial',

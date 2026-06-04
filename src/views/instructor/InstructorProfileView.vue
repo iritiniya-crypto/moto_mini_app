@@ -10,7 +10,11 @@ import {useStudentsStore} from '@/stores/studentsStore.ts'
 import {useUserStore} from '@/stores/userStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
 import {newStudents as mockNewStudents} from '@/mock/trainingContent.ts'
-import type {BookingSlot, PaymentStatus, Skill, Student} from '@/mock/types.ts'
+import type {BookingSlot} from '@/types/booking'
+import type {PaymentStatus} from '@/types/package'
+import type {Skill} from '@/types/skill'
+import type {Student} from '@/types/student'
+import type {TrainingHistory} from '@/types/training'
 import {durationOptions} from "@/dictionary/durationOptions.ts";
 
 defineProps<{
@@ -27,7 +31,6 @@ const {
   updateStudentSkills,
 } = useTrainingStore()
 
-const student = ref<Student | null>()
 const studentsStore = useStudentsStore()
 const {
   error: studentsError,
@@ -45,13 +48,14 @@ const isManualTrainingSaving = ref(false)
 const videoOpen = ref(false)
 const newStudents = ref(mockNewStudents.map((item) => ({ ...item, status: 'new' })))
 const customSkill = ref('')
-const studentName = ref(selectedStudent.value?.name)
+const studentName = ref('')
 const trainingPlan = ref(selectedStudent.value?.focus || '')
-const level = ref(selectedStudent.value?.level)
+const level = ref('')
 const packageTotal = ref(selectedStudent.value?.trainingPackage?.total ?? 0)
 const packageCompleted = ref(selectedStudent.value?.trainingPackage?.completed ?? 0)
 const packagePaymentStatus = ref<PaymentStatus>(selectedStudent.value?.trainingPackage?.paymentStatus ?? 'не оплачено')
 const editableSkills = ref<Skill[]>([])
+const selectedStudentHistory = ref<TrainingHistory[]>([])
 const studentSaveMessage = ref('')
 const trainingToReport = ref<BookingSlot | null>(null)
 const videoTraining = ref<BookingSlot | null>(null)
@@ -94,20 +98,16 @@ const selectedStudentVideoSlots = computed(() =>
   selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed' || slot.status === 'completed'),
 )
 
-async function loadStudentProfile() {
-  await userStore.loadProfile(student.value?.id)
-}
-
 onMounted(() => {
   userStore.checkHealth()
   userStore.loadSkills()
   studentsStore.loadStudents(studentsStore.students)
-  loadStudentProfile()
 })
 
 async function openStudentCard(nextStudent: Student) {
-  await updateStudent(nextStudent.id, nextStudent)
+  const localStudent = await updateStudent(nextStudent.id, nextStudent)
   selectedStudent.value = nextStudent
+  selectedStudentHistory.value = localStudent.trainingHistory ?? nextStudent.trainingHistory ?? []
   studentName.value = nextStudent.name
   level.value = nextStudent.level
   packageTotal.value = nextStudent.trainingPackage?.total ?? 0
@@ -123,10 +123,15 @@ async function openStudentCard(nextStudent: Student) {
     studentsStore.loadStudentSkills(nextStudent),
   ])
 
+  const currentStudent = selectedStudent.value
+  if (!currentStudent) {
+    return
+  }
+
   selectedStudent.value = {
-    ...selectedStudent.value,
-    trainingPackage: apiPackage ?? selectedStudent.value.trainingPackage,
-    skills: apiSkills ?? selectedStudent.value.skills,
+    ...currentStudent,
+    trainingPackage: apiPackage ?? currentStudent.trainingPackage,
+    skills: apiSkills ?? currentStudent.skills,
   }
   updateStudent(selectedStudent.value.id, selectedStudent.value)
   packageTotal.value = selectedStudent.value.trainingPackage?.total ?? 0
@@ -157,7 +162,8 @@ function statusLabel(status: BookingSlot['status']) {
 }
 
 async function saveStudentChanges() {
-  if (isStudentSaving.value) {
+  const currentStudent = selectedStudent.value
+  if (isStudentSaving.value || !currentStudent) {
     return
   }
 
@@ -170,32 +176,32 @@ async function saveStudentChanges() {
     Math.max(0, Number(packageCompleted.value) || 0),
   )
 
-  const updatedStudentFromApi = await studentsStore.updateStudentRecord(selectedStudent.value, {
-    name: nextName || selectedStudent.value.name,
-    level: nextLevel || selectedStudent.value.level,
+  const updatedStudentFromApi = await studentsStore.updateStudentRecord(currentStudent, {
+    name: nextName || currentStudent.name,
+    level: nextLevel || currentStudent.level,
     focus: nextTrainingPlan,
     nextTrainingPlan,
-    telegramUsername: selectedStudent.value.telegramUsername,
+    telegramUsername: currentStudent.telegramUsername,
   })
 
   const savedPackage = await studentsStore.saveStudentPackage(updatedStudentFromApi, {
     total: nextPackageTotal,
     completed: nextPackageCompleted,
     paymentStatus: packagePaymentStatus.value,
-    startedAt: selectedStudent.value.trainingPackage?.startedAt,
-    endedAt: selectedStudent.value.trainingPackage?.endedAt,
-    isActive: selectedStudent.value.trainingPackage?.isActive ?? nextPackageTotal > 0,
+    startedAt: currentStudent.trainingPackage?.startedAt,
+    endedAt: currentStudent.trainingPackage?.endedAt,
+    isActive: currentStudent.trainingPackage?.isActive ?? nextPackageTotal > 0,
   })
   const savedSkills = await studentsStore.saveStudentSkills(updatedStudentFromApi, editableSkills.value)
 
-  updateStudent(selectedStudent.value.id, {
+  updateStudent(currentStudent.id, {
     name: updatedStudentFromApi.name,
     level: updatedStudentFromApi.level,
     focus: updatedStudentFromApi.focus,
     trainingPackage: savedPackage,
     skills: savedSkills,
   })
-  await updateStudentSkills(selectedStudent.value.id, savedSkills)
+  await updateStudentSkills(currentStudent.id, savedSkills)
 
   selectedStudent.value = {
     ...updatedStudentFromApi,
@@ -255,6 +261,12 @@ const isManualTrainingValid = computed(() => {
 
 async function saveManualTraining() {
   manualTrainingMessage.value = ''
+  const currentStudent = selectedStudent.value
+
+  if (!currentStudent) {
+    manualTrainingMessage.value = 'Сначала выберите ученика.'
+    return
+  }
 
   if (!isManualTrainingValid.value) {
     manualTrainingMessage.value = 'Заполните дату, что тренировали, что получилось и на что обратить внимание.'
@@ -273,7 +285,7 @@ async function saveManualTraining() {
     .map((topic) => topic.trim())
     .filter(Boolean)
 
-  const history = await addManualTraining(selectedStudent.value.id, {
+  const history = await addManualTraining(currentStudent.id, {
     date: form.date.trim(),
     duration: form.duration,
     location: form.location.trim() || undefined,
@@ -281,12 +293,14 @@ async function saveManualTraining() {
     improved: form.improved.trim(),
     nextFocus: form.nextFocus.trim(),
     videoUrl: form.videoUrl.trim() || undefined,
-  }, selectedStudent.value.apiId)
+  }, currentStudent.apiId)
 
   if (history) {
-    const updatedStudent = getStudent(selectedStudent.value.id)
-    if (updatedStudent) {
-      selectedStudent.value = updatedStudent
+    selectedStudentHistory.value = [history, ...selectedStudentHistory.value]
+    selectedStudent.value = {
+      ...currentStudent,
+      completedTrainingsCount: currentStudent.completedTrainingsCount + 1,
+      trainingHistory: selectedStudentHistory.value,
     }
     studentSaveMessage.value = 'Тренировка добавлена'
   } else {
@@ -315,14 +329,16 @@ function selectTrainingForVideo(slot: BookingSlot) {
 }
 
 async function saveTrainingVideo() {
-  if (!videoTraining.value || !videoForm.value.url.trim()) {
+  const currentStudent = selectedStudent.value
+
+  if (!currentStudent || !videoTraining.value || !videoForm.value.url.trim()) {
     return
   }
 
-  const history = getStudentTrainingHistory(selectedStudent.value.id).find((item) => item.slotId === videoTraining.value?.id)
+  const history = selectedStudentHistory.value.find((item) => item.slotId === videoTraining.value?.id)
 
   await addTrainingVideo(
-    selectedStudent.value.id,
+    currentStudent.id,
     {
       slotId: videoTraining.value.id,
       date: videoTraining.value.date,
@@ -339,6 +355,11 @@ async function saveTrainingVideo() {
     history?.apiId,
   )
 
+  selectedStudentHistory.value = await getStudentTrainingHistory(currentStudent.id)
+  selectedStudent.value = {
+    ...currentStudent,
+    trainingHistory: selectedStudentHistory.value,
+  }
   videoOpen.value = false
 }
 
@@ -371,7 +392,9 @@ async function addManualStudent() {
     nextTrainingPlan: newStudentForm.value.comment.trim() || 'первичная тренировка и знакомство с мотоциклом',
   })
 
-  updateStudent(createdStudent.id, createdStudent)
+  if (createdStudent) {
+    updateStudent(createdStudent.id, createdStudent)
+  }
   newStudentForm.value = { name: '', username: '', comment: '' }
   addStudentOpen.value = false
 }
@@ -488,7 +511,7 @@ function removeSkill(id: number) {
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="studentDialogOpen" :draggable="false" class="moto-dialog student-card-dialog" header="Карточка ученика" modal>
+    <Dialog v-if="selectedStudent" v-model:visible="studentDialogOpen" :draggable="false" class="moto-dialog student-card-dialog" header="Карточка ученика" modal>
       <div class="form-stack student-dialog-content">
         <div class="student-dialog-header">
           <Avatar class="student-dialog-avatar" image="student-avatar.png" shape="circle" />
@@ -561,9 +584,9 @@ function removeSkill(id: number) {
         </label>
 
         <SectionHeader title="История тренировок" />
-        <div v-if="getStudentTrainingHistory(selectedStudent.id).length > 0">
+        <div v-if="selectedStudentHistory.length > 0">
           <LessonCard
-            v-for="history in getStudentTrainingHistory(selectedStudent.id)"
+            v-for="history in selectedStudentHistory"
             :key="history.id"
             :lesson="history"
           />

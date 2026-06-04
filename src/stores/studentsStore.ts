@@ -10,7 +10,7 @@ import {
   type StudentPayload,
   updateStudent,
 } from '../api/students'
-import type {Student} from '../mock/types'
+import type {Student} from '../types/student'
 
 export const useStudentsStore = defineStore('students', () => {
   const students = ref<Student[]>([])

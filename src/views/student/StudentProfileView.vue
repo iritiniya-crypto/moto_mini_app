@@ -6,21 +6,14 @@ import MetricCard from '@/components/MetricCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import SkillProgress from '@/components/SkillProgress.vue'
 import {useUserStore} from '@/stores/userStore.ts'
-import {useTrainingStore} from '@/composables/useTrainingStore.ts'
-import {students} from '@/mock/students.ts'
-import type {PaymentStatus,} from '@/mock/types.ts'
+import {TEST_USER_ID} from '@/api/client.ts'
+import type {PaymentStatus} from '@/types/package'
+import type {Student} from '@/types/student'
 
 defineProps<{
   role: 'student' | 'instructor'
 }>()
 
-const {
-  getStudent,
-  getStudentTrainingHistory,
-  getStudentSkills,
-} = useTrainingStore()
-
-const student = computed(() => getStudent(students[0].id) || students[0])
 const userStore = useUserStore()
 const {
   profile: apiProfile,
@@ -28,9 +21,22 @@ const {
   profileError,
 } = storeToRefs(userStore)
 
-const studentProfile = computed(() => apiProfile.value || student.value)
-const studentTrainingHistory = computed(() => studentProfile.value.trainingHistory || getStudentTrainingHistory(student.value.id))
-const studentSkills = computed(() => studentProfile.value.skills || getStudentSkills(student.value.id))
+const fallbackStudent: Student = {
+  id: TEST_USER_ID,
+  name: 'Ученик',
+  status: 'активный',
+  level: 'Новичок',
+  completedTrainingsCount: 0,
+  nextLesson: 'Время еще не выбрано',
+  avatar: '',
+  focus: '',
+  skills: [],
+  trainingHistory: [],
+}
+
+const studentProfile = computed(() => apiProfile.value || fallbackStudent)
+const studentTrainingHistory = computed(() => studentProfile.value.trainingHistory || [])
+const studentSkills = computed(() => studentProfile.value.skills || [])
 const studentPackage = computed(
   () =>
     studentProfile.value.trainingPackage || {
@@ -41,7 +47,7 @@ const studentPackage = computed(
 )
 const studentPackageText = computed(() => `${studentPackage.value.completed} / ${studentPackage.value.total}`)
 async function loadStudentProfile() {
-  await userStore.loadProfile(student.value.id, student.value)
+  await userStore.loadProfile(TEST_USER_ID)
 }
 
 onMounted(() => {

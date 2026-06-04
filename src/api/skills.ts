@@ -1,25 +1,21 @@
 import { getJson, putJson } from './client'
 import { normalizeSkills, type ApiRecord } from './normalizers'
-import type { Skill } from '../mock/types'
-
-export type UpsertStudentSkillPayload = {
-  skillId: string
-  progressPercent: number
-}
+import {API_ENDPOINTS} from '../types/api'
+import type { Skill, UpsertStudentSkillRequest } from '../types/skill'
 
 export async function fetchSkills(signal?: AbortSignal) {
-  return getJson<ApiRecord[]>('/skills', signal)
+  return getJson<ApiRecord[]>(API_ENDPOINTS.SKILLS, signal)
 }
 
 export async function fetchStudentSkills(studentId: string, signal?: AbortSignal) {
-  return getJson<ApiRecord[]>(`/students/${studentId}/skills`, signal)
+  return getJson<ApiRecord[]>(API_ENDPOINTS.STUDENT_SKILLS(studentId), signal)
 }
 
-export async function updateStudentSkillsApi(studentId: string, skills: UpsertStudentSkillPayload[]) {
-  return putJson<ApiRecord[], UpsertStudentSkillPayload[]>(`/students/${studentId}/skills`, skills)
+export async function updateStudentSkillsApi(studentId: string, skills: UpsertStudentSkillRequest[]) {
+  return putJson<ApiRecord[], UpsertStudentSkillRequest[]>(API_ENDPOINTS.STUDENT_SKILLS(studentId), skills)
 }
 
-export function skillsToPayload(skills: Skill[]): UpsertStudentSkillPayload[] {
+export function skillsToPayload(skills: Skill[]): UpsertStudentSkillRequest[] {
   return skills
     .filter((skill) => skill.apiId)
     .map((skill) => ({

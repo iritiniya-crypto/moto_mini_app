@@ -18,7 +18,7 @@ import {
 import {TEST_USER_ID} from '../api/client'
 import {type ApiRecord, normalizeBookingSlot} from '../api/normalizers'
 import {bookingSlots} from '../mock/booking'
-import type {BookingSlot} from '../mock/types'
+import type {BookingSlot} from '../types/booking'
 
 const slots = ref<BookingSlot[]>(bookingSlots.map((slot) => ({ ...slot })))
 const activeStudentSlotId = ref<number | null>(null)
