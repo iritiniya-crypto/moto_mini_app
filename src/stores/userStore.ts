@@ -1,11 +1,12 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { TEST_USER_ID } from '../api/client'
-import { fetchHealth, type HealthResponse } from '../api/health'
-import { fetchSkills, normalizeSkillDefinitions } from '../api/skills'
-import { fetchStudentProfile, normalizeStudentProfile } from '../api/studentProfile'
-import { fetchStudents, normalizeStudents } from '../api/students'
-import type { Skill, Student } from '../mock/types'
+import {defineStore} from 'pinia'
+import {ref} from 'vue'
+import {TEST_USER_ID} from '../api/client'
+import {fetchHealth, type HealthResponse} from '../api/health'
+import {fetchSkills, normalizeSkillDefinitions} from '../api/skills'
+import {fetchStudentProfile, normalizeStudentProfile} from '../api/studentProfile'
+import {fetchStudents, normalizeStudents} from '../api/students'
+import type {Skill} from '../types/skill'
+import type {Student} from '../types/student'
 
 export const useUserStore = defineStore('user', () => {
   const health = ref<HealthResponse | null>(null)
@@ -32,16 +33,16 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function loadStudents(fallbackStudents: Student[] = []) {
+  async function loadStudents() {
     isStudentsLoading.value = true
     studentsError.value = ''
 
     try {
       const payload = await fetchStudents()
-      students.value = normalizeStudents(payload, fallbackStudents)
+      students.value = normalizeStudents(payload)
     } catch {
-      students.value = fallbackStudents
-      studentsError.value = 'Backend недоступен, список учеников взят из локальных данных.'
+      students.value = []
+      studentsError.value = 'Backend недоступен, список учеников не загружен.'
     } finally {
       isStudentsLoading.value = false
     }
@@ -62,7 +63,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function loadProfile(studentId: string | number, fallbackStudent: Student) {
+  async function loadProfile(studentId: string) {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 6000)
     const apiStudentId = TEST_USER_ID || studentId
@@ -73,10 +74,10 @@ export const useUserStore = defineStore('user', () => {
 
     try {
       const payload = await fetchStudentProfile(apiStudentId, controller.signal)
-      profile.value = normalizeStudentProfile(payload, fallbackStudent)
+      profile.value = normalizeStudentProfile(payload)
     } catch {
-      profile.value = fallbackStudent
-      profileError.value = 'Backend недоступен, показываем локальные данные.'
+      profile.value = null
+      profileError.value = 'Backend недоступен, профиль не загружен.'
       usingFallback.value = true
     } finally {
       window.clearTimeout(timeout)

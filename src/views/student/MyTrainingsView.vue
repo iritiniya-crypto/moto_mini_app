@@ -1,13 +1,12 @@
-<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { TEST_USER_ID } from '../api/client'
-import { numericId } from '../api/normalizers'
-import SectionHeader from '../components/SectionHeader.vue'
-import { useBookingStore } from '../composables/useBookingStore'
-import type { BookingSlot } from '../mock/types'
+<script lang="ts" setup>
+import {computed, onMounted, ref} from 'vue'
+import {TEST_USER_ID} from '../../api/client.ts'
+import SectionHeader from '../../components/SectionHeader.vue'
+import {useBookingStore} from '../../composables/useBookingStore.ts'
+import type {BookingSlot} from '../../types/booking'
 
-const currentStudentId = TEST_USER_ID ? numericId(TEST_USER_ID, 1) : 1
-const { activeStudentSlot, cancelSlot, loadBookingSlots, requestSlot, rescheduleSlot, availableSlots, slots } = useBookingStore()
+const currentStudentId = TEST_USER_ID
+const { activeStudentSlot, cancelSlot, loadStudentBookingSlots, requestSlot, rescheduleSlot, availableSlots, slots } = useBookingStore()
 const selectedSlotId = ref<number | null>(null)
 const moving = ref(false)
 const bookingDialogOpen = ref(false)
@@ -121,7 +120,7 @@ async function submitBooking() {
       TEST_USER_ID,
     )
   }
-  await loadBookingSlots()
+  await loadStudentBookingSlots(currentStudentId)
   moving.value = false
   bookingDialogOpen.value = false
 }
@@ -142,7 +141,7 @@ async function confirmCancelTraining() {
   }
 
   await cancelSlot(trainingToCancel.value.id)
-  await loadBookingSlots()
+  await loadStudentBookingSlots(currentStudentId)
   if (selectedSlotId.value === trainingToCancel.value.id) {
     selectedSlotId.value = null
   }
@@ -154,7 +153,7 @@ async function confirmCancelTraining() {
 }
 
 onMounted(() => {
-  loadBookingSlots()
+  loadStudentBookingSlots(currentStudentId)
 })
 </script>
 
@@ -170,8 +169,8 @@ onMounted(() => {
             <strong>{{ nextTraining.time }}</strong>
           </div>
           <Tag
-            :value="statusLabel(nextTraining.status)"
             :severity="nextTraining.status === 'confirmed' ? 'success' : 'warn'"
+            :value="statusLabel(nextTraining.status)"
           />
         </div>
 
@@ -191,18 +190,18 @@ onMounted(() => {
         </p>
         <a
           v-if="nextTraining?.finalLocationUrl"
-          class="location-link primary"
           :href="nextTraining.finalLocationUrl"
-          target="_blank"
+          class="location-link primary"
           rel="noreferrer"
+          target="_blank"
         >
           Открыть локацию
         </a>
         <span v-else-if="nextTraining" class="location-empty">Ссылка на локацию появится после подтверждения</span>
         <Button
           v-if="nextTraining?.status === 'confirmed'"
-          label="Перенести"
           icon="pi pi-refresh"
+          label="Перенести"
           severity="secondary"
           @click="startMove(nextTraining)"
         />
@@ -227,8 +226,8 @@ onMounted(() => {
                 <strong>{{ training.time }}</strong>
               </div>
               <Tag
-                :value="statusLabel(training.status)"
                 :severity="training.status === 'confirmed' ? 'success' : 'warn'"
+                :value="statusLabel(training.status)"
               />
             </div>
             <p>{{ durationText(training.duration) }}</p>
@@ -246,17 +245,17 @@ onMounted(() => {
             <div class="slot-actions">
               <Button
                 v-if="training.status === 'confirmed'"
-                label="Перенести"
                 icon="pi pi-refresh"
-                size="small"
+                label="Перенести"
                 severity="secondary"
+                size="small"
                 @click="startMove(training)"
               />
               <Button
-                label="Отменить"
                 icon="pi pi-times"
-                size="small"
+                label="Отменить"
                 severity="secondary"
+                size="small"
                 @click="openCancelDialog(training)"
               />
             </div>
@@ -327,17 +326,17 @@ onMounted(() => {
         </div>
         <a
           v-if="selectedSlot.finalLocationUrl"
-          class="location-link primary"
           :href="selectedSlot.finalLocationUrl"
-          target="_blank"
+          class="location-link primary"
           rel="noreferrer"
+          target="_blank"
         >
           Открыть локацию
         </a>
       </template>
     </Card>
 
-    <Dialog v-model:visible="bookingDialogOpen" modal header="Забронировать тренировку" class="moto-dialog">
+    <Dialog v-model:visible="bookingDialogOpen" class="moto-dialog" header="Забронировать тренировку" modal>
       <div v-if="candidateSlot" class="form-stack">
         <div class="booking-summary">
           <span>Выбранное время</span>
@@ -352,16 +351,16 @@ onMounted(() => {
           Комментарий для Никиты
           <Textarea
             v-model="bookingForm.studentComment"
-            rows="3"
             auto-resize
             placeholder="Например: хочу потренировать торможение, первый раз в городе, боюсь серпантина"
+            rows="3"
           />
         </label>
-        <Button label="Отправить запрос" icon="pi pi-send" @click="submitBooking" />
+        <Button icon="pi pi-send" label="Отправить запрос" @click="submitBooking" />
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="cancelDialogOpen" modal header="Отменить тренировку?" class="moto-dialog" :draggable="false">
+    <Dialog v-model:visible="cancelDialogOpen" :draggable="false" class="moto-dialog" header="Отменить тренировку?" modal>
       <div class="form-stack">
         <p class="status-message">
           Если отмена происходит в день тренировки, занятие считается использованным и может быть списано из пакета.
@@ -373,7 +372,7 @@ onMounted(() => {
         </div>
         <div class="dialog-actions">
           <Button label="Назад" severity="secondary" @click="cancelDialogOpen = false" />
-          <Button label="Отменить тренировку" icon="pi pi-times" severity="danger" @click="confirmCancelTraining" />
+          <Button icon="pi pi-times" label="Отменить тренировку" severity="danger" @click="confirmCancelTraining" />
         </div>
       </div>
     </Dialog>

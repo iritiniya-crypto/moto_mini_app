@@ -1,12 +1,8 @@
 import { postJson } from './client'
+import {API_ENDPOINTS} from '../types/api'
 import type { ApiRecord } from './normalizers'
+import type {CreateTrainingVideoRequest} from '../types/training'
 
-export type CreateTrainingVideoPayload = {
-  title?: string
-  telegramUrl: string
-  comment?: string
-}
-
-export async function createTrainingVideo(historyId: string, payload: CreateTrainingVideoPayload) {
-  return postJson<ApiRecord, CreateTrainingVideoPayload>(`/training-history/${historyId}/videos`, payload)
+export async function createTrainingVideo(historyId: string, payload: CreateTrainingVideoRequest) {
+  return postJson<ApiRecord, CreateTrainingVideoRequest>(API_ENDPOINTS.TRAINING_VIDEO(historyId), payload)
 }

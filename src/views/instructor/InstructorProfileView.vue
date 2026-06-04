@@ -1,52 +1,53 @@
-<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import CompleteTrainingDialog from '../components/CompleteTrainingDialog.vue'
-import LessonCard from '../components/LessonCard.vue'
-import MetricCard from '../components/MetricCard.vue'
-import SectionHeader from '../components/SectionHeader.vue'
-import SkillProgress from '../components/SkillProgress.vue'
-import { useBookingStore } from '../composables/useBookingStore'
-import { useStudentsStore } from '../stores/studentsStore'
-import { useUserStore } from '../stores/userStore'
-import { useTrainingStore } from '../composables/useTrainingStore'
-import { newStudents as mockNewStudents } from '../mock/trainingContent'
-import { students } from '../mock/students'
-import type { BookingSlot, PaymentStatus, Skill, Student } from '../mock/types'
+<script lang="ts" setup>
+import {computed, onMounted, ref} from 'vue'
+import {storeToRefs} from 'pinia'
+import CompleteTrainingDialog from '@/components/CompleteTrainingDialog.vue'
+import LessonCard from '@/components/LessonCard.vue'
+import MetricCard from '@/components/MetricCard.vue'
+import SectionHeader from '@/components/SectionHeader.vue'
+import {useBookingStore} from '@/composables/useBookingStore.ts'
+import {useStudentsStore} from '@/stores/studentsStore.ts'
+import {useUserStore} from '@/stores/userStore.ts'
+import {useTrainingStore} from '@/composables/useTrainingStore.ts'
+import type {BookingSlot} from '@/types/booking'
+import type {PaymentStatus} from '@/types/package'
+import type {Skill} from '@/types/skill'
+import type {Student} from '@/types/student'
+import type {TrainingHistory} from '@/types/training'
+import {durationOptions} from "@/dictionary/durationOptions.ts";
 
 defineProps<{
   role: 'student' | 'instructor'
 }>()
 
-type StudentCard = Student
+type NewStudentStatus = 'new' | 'accepted' | 'declined'
+type NewStudentListItem = {
+  id: string
+  name: string
+  username: string
+  comment: string
+  date: string
+  status: NewStudentStatus
+}
 
+const userStore = useUserStore();
 const { slots } = useBookingStore()
 const {
   addManualTraining,
   addTrainingVideo,
-  allStudents: storeStudents,
-  getStudent,
   getStudentTrainingHistory,
-  getStudentSkills,
   updateStudent,
   updateStudentSkills,
 } = useTrainingStore()
 
-const student = computed(() => getStudent(students[0].id) || students[0])
-const userStore = useUserStore()
 const studentsStore = useStudentsStore()
-const {
-  profile: apiProfile,
-  isProfileLoading,
-  profileError,
-} = storeToRefs(userStore)
 const {
   error: studentsError,
   isLoading: isStudentsLoading,
   isSaving: isStudentSaving,
   students: apiStudents,
 } = storeToRefs(studentsStore)
-const selectedStudent = ref<StudentCard>(students[0])
+const selectedStudent = ref<Student | null>(null)
 const studentDialogOpen = ref(false)
 const addStudentOpen = ref(false)
 const reportSelectionOpen = ref(false)
@@ -54,15 +55,16 @@ const completeTrainingDialogOpen = ref(false)
 const manualTrainingOpen = ref(false)
 const isManualTrainingSaving = ref(false)
 const videoOpen = ref(false)
-const newStudents = ref(mockNewStudents.map((item) => ({ ...item, status: 'new' })))
+const newStudentStatuses = ref<Record<string, Exclude<NewStudentStatus, 'new'>>>({})
 const customSkill = ref('')
-const studentName = ref(selectedStudent.value.name)
-const trainingPlan = ref(selectedStudent.value.focus || '')
-const level = ref(selectedStudent.value.level)
-const packageTotal = ref(selectedStudent.value.trainingPackage?.total ?? 0)
-const packageCompleted = ref(selectedStudent.value.trainingPackage?.completed ?? 0)
-const packagePaymentStatus = ref<PaymentStatus>(selectedStudent.value.trainingPackage?.paymentStatus ?? 'не оплачено')
+const studentName = ref('')
+const trainingPlan = ref(selectedStudent.value?.focus || '')
+const level = ref('')
+const packageTotal = ref(selectedStudent.value?.trainingPackage?.total ?? 0)
+const packageCompleted = ref(selectedStudent.value?.trainingPackage?.completed ?? 0)
+const packagePaymentStatus = ref<PaymentStatus>(selectedStudent.value?.trainingPackage?.paymentStatus ?? 'не оплачено')
 const editableSkills = ref<Skill[]>([])
+const selectedStudentHistory = ref<TrainingHistory[]>([])
 const studentSaveMessage = ref('')
 const trainingToReport = ref<BookingSlot | null>(null)
 const videoTraining = ref<BookingSlot | null>(null)
@@ -71,7 +73,6 @@ const videoForm = ref({
   url: '',
   comment: '',
 })
-const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
 const paymentStatusOptions: PaymentStatus[] = ['оплачено', 'не оплачено', 'частично оплачено']
 const manualTrainingForm = ref({
   date: '',
@@ -89,25 +90,25 @@ const newStudentForm = ref({
   comment: '',
 })
 
-const allStudents = computed(() => (apiStudents.value.length > 0 ? apiStudents.value : storeStudents.value))
+const allStudents = computed(() => (apiStudents.value.length > 0 ? apiStudents.value : studentsStore.students))
 const activeStudents = computed(() => allStudents.value.length)
+const newStudents = computed<NewStudentListItem[]>(() => {
+  return allStudents.value
+    .filter((student) => isRecentStudent(student.createdAt))
+    .map((student) => ({
+      id: student.id,
+      name: student.name,
+      username: telegramHandle(student),
+      comment: student.focus || 'Ожидает первичную консультацию.',
+      date: formatStudentDate(student.createdAt),
+      status: newStudentStatuses.value[student.id] ?? 'new',
+    }))
+})
 
-const studentProfile = computed(() => apiProfile.value || student.value)
-const studentTrainingHistory = computed(() => studentProfile.value.trainingHistory || getStudentTrainingHistory(student.value.id))
-const studentSkills = computed(() => studentProfile.value.skills || getStudentSkills(student.value.id))
-const studentPackage = computed(
-  () =>
-    studentProfile.value.trainingPackage || {
-      total: 0,
-      completed: 0,
-      paymentStatus: 'не оплачено' as PaymentStatus,
-    },
-)
-const studentPackageText = computed(() => `${studentPackage.value.completed} / ${studentPackage.value.total}`)
 const selectedStudentSlots = computed(() =>
   slots.value.filter(
     (slot) =>
-      slot.studentId === selectedStudent.value.id &&
+      slot.studentId === selectedStudent.value?.id &&
       ['requested', 'reschedule', 'confirmed', 'completed'].includes(slot.status),
   ),
 )
@@ -118,20 +119,16 @@ const selectedStudentVideoSlots = computed(() =>
   selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed' || slot.status === 'completed'),
 )
 
-async function loadStudentProfile() {
-  await userStore.loadProfile(student.value.id, student.value)
-}
-
 onMounted(() => {
   userStore.checkHealth()
   userStore.loadSkills()
-  studentsStore.loadStudents(storeStudents.value)
-  loadStudentProfile()
+  studentsStore.loadStudents()
 })
 
-async function openStudentCard(nextStudent: StudentCard) {
-  updateStudent(nextStudent.id, nextStudent)
+async function openStudentCard(nextStudent: Student) {
+  const localStudent = await updateStudent(nextStudent.id, nextStudent)
   selectedStudent.value = nextStudent
+  selectedStudentHistory.value = localStudent?.trainingHistory ?? nextStudent.trainingHistory ?? []
   studentName.value = nextStudent.name
   level.value = nextStudent.level
   packageTotal.value = nextStudent.trainingPackage?.total ?? 0
@@ -147,10 +144,15 @@ async function openStudentCard(nextStudent: StudentCard) {
     studentsStore.loadStudentSkills(nextStudent),
   ])
 
+  const currentStudent = selectedStudent.value
+  if (!currentStudent) {
+    return
+  }
+
   selectedStudent.value = {
-    ...selectedStudent.value,
-    trainingPackage: apiPackage ?? selectedStudent.value.trainingPackage,
-    skills: apiSkills ?? selectedStudent.value.skills,
+    ...currentStudent,
+    trainingPackage: apiPackage ?? currentStudent.trainingPackage,
+    skills: apiSkills ?? currentStudent.skills,
   }
   updateStudent(selectedStudent.value.id, selectedStudent.value)
   packageTotal.value = selectedStudent.value.trainingPackage?.total ?? 0
@@ -159,8 +161,31 @@ async function openStudentCard(nextStudent: StudentCard) {
   editableSkills.value = (selectedStudent.value.skills || []).map((skill) => ({ ...skill }))
 }
 
-function telegramHandle(nextStudent: StudentCard) {
+function telegramHandle(nextStudent: Student) {
   return nextStudent.telegramUsername || `@${nextStudent.name.split(' ')[0].toLowerCase()}_moto`
+}
+
+function formatStudentDate(value?: string) {
+  if (!value) {
+    return 'дата не указана'
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date(value)).replace(' г.', '')
+}
+
+function isRecentStudent(createdAt?: string) {
+  if (!createdAt) {
+    return false
+  }
+
+  const createdAtMs = new Date(createdAt).getTime()
+
+  if (!Number.isFinite(createdAtMs)) {
+    return false
+  }
+
+  const threeDaysMs = 3 * 24 * 60 * 60 * 1000
+  return Date.now() - createdAtMs <= threeDaysMs
 }
 
 function durationText(duration: string) {
@@ -181,7 +206,8 @@ function statusLabel(status: BookingSlot['status']) {
 }
 
 async function saveStudentChanges() {
-  if (isStudentSaving.value) {
+  const currentStudent = selectedStudent.value
+  if (isStudentSaving.value || !currentStudent) {
     return
   }
 
@@ -194,32 +220,32 @@ async function saveStudentChanges() {
     Math.max(0, Number(packageCompleted.value) || 0),
   )
 
-  const updatedStudentFromApi = await studentsStore.updateStudentRecord(selectedStudent.value, {
-    name: nextName || selectedStudent.value.name,
-    level: nextLevel || selectedStudent.value.level,
+  const updatedStudentFromApi = await studentsStore.updateStudentRecord(currentStudent, {
+    name: nextName || currentStudent.name,
+    level: nextLevel || currentStudent.level,
     focus: nextTrainingPlan,
     nextTrainingPlan,
-    telegramUsername: selectedStudent.value.telegramUsername,
+    telegramUsername: currentStudent.telegramUsername,
   })
 
   const savedPackage = await studentsStore.saveStudentPackage(updatedStudentFromApi, {
     total: nextPackageTotal,
     completed: nextPackageCompleted,
     paymentStatus: packagePaymentStatus.value,
-    startedAt: selectedStudent.value.trainingPackage?.startedAt,
-    endedAt: selectedStudent.value.trainingPackage?.endedAt,
-    isActive: selectedStudent.value.trainingPackage?.isActive ?? nextPackageTotal > 0,
+    startedAt: currentStudent.trainingPackage?.startedAt,
+    endedAt: currentStudent.trainingPackage?.endedAt,
+    isActive: currentStudent.trainingPackage?.isActive ?? nextPackageTotal > 0,
   })
   const savedSkills = await studentsStore.saveStudentSkills(updatedStudentFromApi, editableSkills.value)
 
-  updateStudent(selectedStudent.value.id, {
+  updateStudent(currentStudent.id, {
     name: updatedStudentFromApi.name,
     level: updatedStudentFromApi.level,
     focus: updatedStudentFromApi.focus,
     trainingPackage: savedPackage,
     skills: savedSkills,
   })
-  await updateStudentSkills(selectedStudent.value.id, savedSkills)
+  await updateStudentSkills(currentStudent.id, savedSkills)
 
   selectedStudent.value = {
     ...updatedStudentFromApi,
@@ -279,6 +305,12 @@ const isManualTrainingValid = computed(() => {
 
 async function saveManualTraining() {
   manualTrainingMessage.value = ''
+  const currentStudent = selectedStudent.value
+
+  if (!currentStudent) {
+    manualTrainingMessage.value = 'Сначала выберите ученика.'
+    return
+  }
 
   if (!isManualTrainingValid.value) {
     manualTrainingMessage.value = 'Заполните дату, что тренировали, что получилось и на что обратить внимание.'
@@ -297,7 +329,7 @@ async function saveManualTraining() {
     .map((topic) => topic.trim())
     .filter(Boolean)
 
-  const history = await addManualTraining(selectedStudent.value.id, {
+  const history = await addManualTraining(currentStudent.id, {
     date: form.date.trim(),
     duration: form.duration,
     location: form.location.trim() || undefined,
@@ -305,12 +337,14 @@ async function saveManualTraining() {
     improved: form.improved.trim(),
     nextFocus: form.nextFocus.trim(),
     videoUrl: form.videoUrl.trim() || undefined,
-  }, selectedStudent.value.apiId)
+  }, currentStudent.apiId)
 
   if (history) {
-    const updatedStudent = getStudent(selectedStudent.value.id)
-    if (updatedStudent) {
-      selectedStudent.value = updatedStudent
+    selectedStudentHistory.value = [history, ...selectedStudentHistory.value]
+    selectedStudent.value = {
+      ...currentStudent,
+      completedTrainingsCount: currentStudent.completedTrainingsCount + 1,
+      trainingHistory: selectedStudentHistory.value,
     }
     studentSaveMessage.value = 'Тренировка добавлена'
   } else {
@@ -339,14 +373,16 @@ function selectTrainingForVideo(slot: BookingSlot) {
 }
 
 async function saveTrainingVideo() {
-  if (!videoTraining.value || !videoForm.value.url.trim()) {
+  const currentStudent = selectedStudent.value
+
+  if (!currentStudent || !videoTraining.value || !videoForm.value.url.trim()) {
     return
   }
 
-  const history = getStudentTrainingHistory(selectedStudent.value.id).find((item) => item.slotId === videoTraining.value?.id)
+  const history = selectedStudentHistory.value.find((item) => item.slotId === videoTraining.value?.id)
 
   await addTrainingVideo(
-    selectedStudent.value.id,
+    currentStudent.id,
     {
       slotId: videoTraining.value.id,
       date: videoTraining.value.date,
@@ -363,21 +399,20 @@ async function saveTrainingVideo() {
     history?.apiId,
   )
 
+  selectedStudentHistory.value = await getStudentTrainingHistory(currentStudent.id)
+  selectedStudent.value = {
+    ...currentStudent,
+    trainingHistory: selectedStudentHistory.value,
+  }
   videoOpen.value = false
 }
 
-function acceptNewStudent(id: number) {
-  const item = newStudents.value.find((newStudent) => newStudent.id === id)
-  if (item) {
-    item.status = 'accepted'
-  }
+function acceptNewStudent(id: string) {
+  newStudentStatuses.value[id] = 'accepted'
 }
 
-function declineNewStudent(id: number) {
-  const item = newStudents.value.find((newStudent) => newStudent.id === id)
-  if (item) {
-    item.status = 'declined'
-  }
+function declineNewStudent(id: string) {
+  newStudentStatuses.value[id] = 'declined'
 }
 
 async function addManualStudent() {
@@ -395,7 +430,9 @@ async function addManualStudent() {
     nextTrainingPlan: newStudentForm.value.comment.trim() || 'первичная тренировка и знакомство с мотоциклом',
   })
 
-  updateStudent(createdStudent.id, createdStudent)
+  if (createdStudent) {
+    updateStudent(createdStudent.id, createdStudent)
+  }
   newStudentForm.value = { name: '', username: '', comment: '' }
   addStudentOpen.value = false
 }
@@ -421,54 +458,7 @@ function removeSkill(id: number) {
 </script>
 
 <template>
-  <section v-if="role === 'student'" class="stack">
-    <Card class="hero-card profile">
-      <template #content>
-        <div class="student-top">
-          <Avatar image="student-avatar.png" size="xlarge" shape="circle" />
-          <div>
-            <h1>{{ studentProfile.name }}</h1>
-            <p>{{ studentProfile.level }}</p>
-          </div>
-        </div>
-        <p v-if="isProfileLoading" class="status-message">Загружаем профиль из backend...</p>
-        <p v-else-if="profileError" class="status-message">{{ profileError }}</p>
-      </template>
-    </Card>
-
-    <div class="metric-grid">
-      <MetricCard label="Тренировок" :value="studentProfile.completedTrainingsCount" hint="в журнале" />
-      <MetricCard label="Уровень" :value="studentProfile.level" hint="текущий" />
-      <MetricCard label="Пакет" :value="studentPackageText" :hint="studentPackage.paymentStatus" />
-    </div>
-
-    <section>
-      <SectionHeader title="История тренировок" />
-      <div v-if="studentTrainingHistory.length > 0" class="stack tight">
-        <LessonCard v-for="lesson in studentTrainingHistory" :key="lesson.id" :lesson="lesson" />
-      </div>
-      <Card v-else class="settings-card">
-        <template #content>
-          <p class="text-gray-400">Тренировок еще нет</p>
-        </template>
-      </Card>
-    </section>
-
-    <section>
-      <SectionHeader title="Прогресс навыков" />
-      <div v-if="studentSkills.length > 0" class="stack tight">
-        <SkillProgress v-for="skill in studentSkills" :key="skill.id" :skill="skill" />
-      </div>
-      <Card v-else class="settings-card">
-        <template #content>
-          <p class="text-gray-400">Навыков еще нет</p>
-        </template>
-      </Card>
-    </section>
-
-  </section>
-
-  <section v-else class="stack">
+  <section class="stack">
     <Card class="hero-card profile">
       <template #content>
         <Tag value="профиль инструктора" />
@@ -478,11 +468,11 @@ function removeSkill(id: number) {
     </Card>
 
     <div class="metric-grid">
-      <MetricCard label="Активных учеников" :value="activeStudents" hint="сейчас" />
-      <MetricCard label="Новых учеников" :value="newStudents.filter((item) => item.status === 'new').length" hint="из бота" />
+      <MetricCard :value="activeStudents" hint="сейчас" label="Активных учеников" />
+      <MetricCard :value="newStudents.filter((item) => item.status === 'new').length" hint="из бота" label="Новых учеников" />
     </div>
 
-    <Button label="Добавить ученика" icon="pi pi-plus" @click="addStudentOpen = true" />
+    <Button icon="pi pi-plus" label="Добавить ученика" @click="addStudentOpen = true" />
     <p v-if="isStudentsLoading" class="status-message">Загружаем учеников из backend...</p>
     <p v-else-if="studentsError" class="status-message">{{ studentsError }}</p>
 
@@ -498,13 +488,13 @@ function removeSkill(id: number) {
                 <small>{{ item.comment }}</small>
               </div>
               <Tag
-                :value="item.status === 'accepted' ? 'Принят' : item.status === 'declined' ? 'Отклонен' : 'Новый'"
                 :severity="item.status === 'accepted' ? 'success' : item.status === 'declined' ? 'secondary' : 'warn'"
+                :value="item.status === 'accepted' ? 'Принят' : item.status === 'declined' ? 'Отклонен' : 'Новый'"
               />
             </div>
             <div v-if="item.status === 'new'" class="slot-actions">
-              <Button label="Принять" icon="pi pi-check" size="small" @click="acceptNewStudent(item.id)" />
-              <Button label="Отклонить" icon="pi pi-times" size="small" severity="secondary" @click="declineNewStudent(item.id)" />
+              <Button icon="pi pi-check" label="Принять" size="small" @click="acceptNewStudent(item.id)" />
+              <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineNewStudent(item.id)" />
             </div>
           </template>
         </Card>
@@ -536,7 +526,7 @@ function removeSkill(id: number) {
       </div>
     </section>
 
-    <Dialog v-model:visible="addStudentOpen" modal header="Добавить ученика" class="moto-dialog" :draggable="false">
+    <Dialog v-model:visible="addStudentOpen" :draggable="false" class="moto-dialog" header="Добавить ученика" modal>
       <div class="form-stack">
         <label>
           Имя и фамилия
@@ -548,21 +538,21 @@ function removeSkill(id: number) {
         </label>
         <label>
           Комментарий
-          <Textarea v-model="newStudentForm.comment" rows="3" auto-resize placeholder="Например: первый раз, хочет уверенно ездить в городе" />
+          <Textarea v-model="newStudentForm.comment" auto-resize placeholder="Например: первый раз, хочет уверенно ездить в городе" rows="3" />
         </label>
         <Button
-          label="Добавить ученика"
-          icon="pi pi-plus"
           :disabled="isStudentSaving"
+          icon="pi pi-plus"
+          label="Добавить ученика"
           @click="addManualStudent"
         />
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="studentDialogOpen" modal header="Карточка ученика" class="moto-dialog student-card-dialog" :draggable="false">
+    <Dialog v-if="selectedStudent" v-model:visible="studentDialogOpen" :draggable="false" class="moto-dialog student-card-dialog" header="Карточка ученика" modal>
       <div class="form-stack student-dialog-content">
         <div class="student-dialog-header">
-          <Avatar image="student-avatar.png" class="student-dialog-avatar" shape="circle" />
+          <Avatar class="student-dialog-avatar" image="student-avatar.png" shape="circle" />
           <div>
             <h3>{{ selectedStudent.name }}</h3>
             <span>{{ telegramHandle(selectedStudent) }}</span>
@@ -571,14 +561,14 @@ function removeSkill(id: number) {
         </div>
 
         <div class="action-grid">
-          <Button label="Заполнить отчет" icon="pi pi-pen-to-square" @click="openReportSelection" />
-          <Button label="Добавить тренировку вручную" icon="pi pi-plus-circle" severity="secondary" @click="openManualTrainingDialog" />
-          <Button label="Добавить видео" icon="pi pi-video" severity="secondary" @click="openVideoDialog" />
+          <Button icon="pi pi-pen-to-square" label="Заполнить отчет" @click="openReportSelection" />
+          <Button icon="pi pi-plus-circle" label="Добавить тренировку вручную" severity="secondary" @click="openManualTrainingDialog" />
+          <Button icon="pi pi-video" label="Добавить видео" severity="secondary" @click="openVideoDialog" />
           <Button
-            label="Сохранить изменения"
-            icon="pi pi-save"
-            severity="secondary"
             :disabled="isStudentSaving"
+            icon="pi pi-save"
+            label="Сохранить изменения"
+            severity="secondary"
             @click="saveStudentChanges"
           />
         </div>
@@ -597,11 +587,11 @@ function removeSkill(id: number) {
           <div class="package-grid">
             <label>
               Количество тренировок в пакете
-              <input v-model.number="packageTotal" class="skill-percent-input" type="number" min="0" />
+              <input v-model.number="packageTotal" class="skill-percent-input" min="0" type="number" />
             </label>
             <label>
               Пройдено в текущем пакете
-              <input v-model.number="packageCompleted" class="skill-percent-input" type="number" min="0" :max="packageTotal" />
+              <input v-model.number="packageCompleted" :max="packageTotal" class="skill-percent-input" min="0" type="number" />
             </label>
             <label class="package-payment-field">
               Статус оплаты
@@ -628,13 +618,13 @@ function removeSkill(id: number) {
 
         <label>
           Что будем изучать на тренировке
-          <Textarea v-model="trainingPlan" rows="3" auto-resize />
+          <Textarea v-model="trainingPlan" auto-resize rows="3" />
         </label>
 
         <SectionHeader title="История тренировок" />
-        <div v-if="getStudentTrainingHistory(selectedStudent.id).length > 0">
+        <div v-if="selectedStudentHistory.length > 0">
           <LessonCard
-            v-for="history in getStudentTrainingHistory(selectedStudent.id)"
+            v-for="history in selectedStudentHistory"
             :key="history.id"
             :lesson="history"
           />
@@ -650,11 +640,11 @@ function removeSkill(id: number) {
             <input
               v-model.number="skill.oldValue"
               class="skill-percent-input"
-              type="number"
-              min="0"
               max="100"
+              min="0"
+              type="number"
             />
-            <Button icon="pi pi-trash" size="small" severity="secondary" @click="removeSkill(skill.id)" />
+            <Button icon="pi pi-trash" severity="secondary" size="small" @click="removeSkill(skill.id)" />
           </label>
         </div>
 
@@ -662,18 +652,18 @@ function removeSkill(id: number) {
           Добавить навык
           <InputText v-model="customSkill" placeholder="например, маневрирование" />
         </label>
-        <Button label="Добавить навык" icon="pi pi-plus" @click="addSkill" />
+        <Button icon="pi pi-plus" label="Добавить навык" @click="addSkill" />
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="reportSelectionOpen" modal header="Выбрать тренировку для отчета" class="moto-dialog" :draggable="false">
+    <Dialog v-model:visible="reportSelectionOpen" :draggable="false" class="moto-dialog" header="Выбрать тренировку для отчета" modal>
       <div class="form-stack">
         <div v-if="selectedStudentReportSlots.length > 0" class="training-select-list">
           <button
             v-for="slot in selectedStudentReportSlots"
             :key="slot.id"
-            type="button"
             class="training-select-card"
+            type="button"
             @click="selectTrainingForReport(slot)"
           >
             <span>{{ slot.date }} · {{ slot.time }} · {{ durationText(slot.duration) }}</span>
@@ -686,20 +676,20 @@ function removeSkill(id: number) {
     </Dialog>
 
     <CompleteTrainingDialog
-      :open="completeTrainingDialogOpen"
       :slot="trainingToReport"
+      :open="completeTrainingDialogOpen"
       :student="selectedStudent"
-      @update:open="completeTrainingDialogOpen = $event"
       @completed="handleTrainingReportCompleted"
+      @update:open="completeTrainingDialogOpen = $event"
     />
 
     <Dialog
       v-if="manualTrainingOpen"
       v-model:visible="manualTrainingOpen"
-      modal
-      header="Добавить тренировку"
-      class="moto-dialog"
       :draggable="false"
+      class="moto-dialog"
+      header="Добавить тренировку"
+      modal
     >
       <div class="form-stack">
         <label>
@@ -718,18 +708,18 @@ function removeSkill(id: number) {
           Что тренировали
           <Textarea
             v-model="manualTrainingForm.trained"
-            rows="2"
             auto-resize
             placeholder="Например: Овал, Восьмерка, Торможение"
+            rows="2"
           />
         </label>
         <label>
           Что получилось
-          <Textarea v-model="manualTrainingForm.improved" rows="3" auto-resize />
+          <Textarea v-model="manualTrainingForm.improved" auto-resize rows="3" />
         </label>
         <label>
           На что обратить внимание
-          <Textarea v-model="manualTrainingForm.nextFocus" rows="3" auto-resize />
+          <Textarea v-model="manualTrainingForm.nextFocus" auto-resize rows="3" />
         </label>
         <label>
           Видео Telegram
@@ -737,22 +727,22 @@ function removeSkill(id: number) {
         </label>
         <p v-if="manualTrainingMessage" class="status-message">{{ manualTrainingMessage }}</p>
         <Button
-          label="Сохранить тренировку"
-          icon="pi pi-check"
           :disabled="isManualTrainingSaving"
+          icon="pi pi-check"
+          label="Сохранить тренировку"
           @click="saveManualTraining"
         />
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="videoOpen" modal header="Добавить видео к тренировке" class="moto-dialog" :draggable="false">
+    <Dialog v-model:visible="videoOpen" :draggable="false" class="moto-dialog" header="Добавить видео к тренировке" modal>
       <div class="form-stack">
         <div v-if="selectedStudentVideoSlots.length > 0" class="training-select-list">
           <button
             v-for="slot in selectedStudentVideoSlots"
             :key="slot.id"
-            type="button"
             :class="['training-select-card', { active: videoTraining?.id === slot.id }]"
+            type="button"
             @click="selectTrainingForVideo(slot)"
           >
             <span>{{ slot.date }} · {{ slot.time }} · {{ durationText(slot.duration) }}</span>
@@ -773,9 +763,9 @@ function removeSkill(id: number) {
           </label>
           <label>
             Короткий комментарий
-            <Textarea v-model="videoForm.comment" rows="3" auto-resize />
+            <Textarea v-model="videoForm.comment" auto-resize rows="3" />
           </label>
-          <Button label="Сохранить видео" icon="pi pi-check" :disabled="!videoForm.url.trim()" @click="saveTrainingVideo" />
+          <Button :disabled="!videoForm.url.trim()" icon="pi pi-check" label="Сохранить видео" @click="saveTrainingVideo" />
         </template>
       </div>
     </Dialog>

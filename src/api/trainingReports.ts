@@ -1,25 +1,17 @@
 import { postJson } from './client'
-import { levelToApi, type ApiRecord } from './normalizers'
+import { levelToApi } from './normalizers'
+import {API_ENDPOINTS} from '../types/api'
+import type {CreateTrainingReportRequest, CreateTrainingReportResponse} from '../types/training'
 
-export type CreateTrainingReportPayload = {
-  slotId: string
-  studentId: string
-  trainedSkills: string[]
-  improved: string
-  nextFocus: string
+export type CreateTrainingReportPayload = Omit<CreateTrainingReportRequest, 'levelUpdate'> & {
   levelUpdate?: string
 }
 
-export type TrainingReportResponse = {
-  report: ApiRecord
-  trainingHistory: ApiRecord
-  slot: ApiRecord
-  student: ApiRecord
-}
+export type TrainingReportResponse = CreateTrainingReportResponse
 
 export async function createTrainingReportApi(payload: CreateTrainingReportPayload) {
-  return postJson<TrainingReportResponse, CreateTrainingReportPayload>('/training-reports', {
+  return postJson<TrainingReportResponse, CreateTrainingReportRequest>(API_ENDPOINTS.TRAINING_REPORTS, {
     ...payload,
-    levelUpdate: payload.levelUpdate ? levelToApi(payload.levelUpdate) : undefined,
+    levelUpdate: payload.levelUpdate ? levelToApi(payload.levelUpdate) as CreateTrainingReportRequest['levelUpdate'] : undefined,
   })
 }

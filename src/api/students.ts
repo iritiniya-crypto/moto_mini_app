@@ -1,6 +1,7 @@
-import { getJson, patchJson, postJson } from './client'
-import { levelToApi, normalizeStudent, type ApiRecord } from './normalizers'
-import type { Student } from '../mock/types'
+import {getJson, patchJson, postJson} from './client'
+import {type ApiRecord, levelToApi, normalizeStudent} from './normalizers'
+import {API_ENDPOINTS} from '../types/api'
+import type {CreateStudentRequest, Student, UpdateStudentRequest} from '../types/student'
 
 export type StudentPayload = {
   name: string
@@ -10,27 +11,27 @@ export type StudentPayload = {
   nextTrainingPlan?: string
 }
 
-function toStudentDto(payload: StudentPayload | Partial<StudentPayload>) {
+function toStudentDto(payload: StudentPayload | Partial<StudentPayload>): CreateStudentRequest | UpdateStudentRequest {
   return {
     ...payload,
-    level: payload.level ? levelToApi(payload.level) : undefined,
+    level: payload.level ? levelToApi(payload.level) as CreateStudentRequest['level'] : undefined,
   }
 }
 
 export async function fetchStudents(signal?: AbortSignal) {
-  return getJson<ApiRecord[]>('/students', signal)
+  return getJson<ApiRecord[]>(API_ENDPOINTS.STUDENTS, signal)
 }
 
 export async function createStudent(payload: StudentPayload) {
-  return postJson<ApiRecord, ReturnType<typeof toStudentDto>>('/students', toStudentDto(payload))
+  return postJson<ApiRecord, CreateStudentRequest>(API_ENDPOINTS.STUDENTS, toStudentDto(payload) as CreateStudentRequest)
 }
 
 export async function updateStudent(studentId: string, payload: Partial<StudentPayload>) {
-  return patchJson<ApiRecord, ReturnType<typeof toStudentDto>>(`/students/${studentId}`, toStudentDto(payload))
+  return patchJson<ApiRecord, UpdateStudentRequest>(API_ENDPOINTS.STUDENT_UPDATE(studentId), toStudentDto(payload))
 }
 
 export function normalizeStudents(payload: ApiRecord[], fallbacks: Student[] = []) {
-  return payload.map((student, index) => normalizeStudent(student, fallbacks[index], index))
+  return payload.map((student, index) => normalizeStudent(student, fallbacks[index]))
 }
 
 export function normalizeStudentResponse(payload: ApiRecord, fallback?: Student) {

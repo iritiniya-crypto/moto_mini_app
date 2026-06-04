@@ -1,4 +1,8 @@
-import type { BookingSlot, PaymentStatus, Skill, Student, TrainingHistory, TrainingPackage } from '../mock/types'
+import type {BookingSlot} from '../types/booking'
+import type {PaymentStatus, TrainingPackage, TrainingPackagePaymentStatus} from '../types/package'
+import type {Skill} from '../types/skill'
+import type {Student} from '../types/student'
+import type {TrainingHistory} from '../types/training'
 
 export type ApiRecord = Record<string, any>
 
@@ -127,8 +131,8 @@ export function levelFromApi(value: unknown, fallback = 'Новичок') {
   return map[String(value)] || String(value || fallback)
 }
 
-export function paymentStatusToApi(value: PaymentStatus) {
-  const map: Record<PaymentStatus, string> = {
+export function paymentStatusToApi(value: PaymentStatus): TrainingPackagePaymentStatus {
+  const map: Record<PaymentStatus, TrainingPackagePaymentStatus> = {
     оплачено: 'paid',
     'не оплачено': 'unpaid',
     'частично оплачено': 'partial',
@@ -249,14 +253,16 @@ export function normalizeHistoryItem(source: ApiRecord, fallback?: Partial<Train
   }
 }
 
-export function normalizeStudent(source: ApiRecord, fallback?: Student, index = 0): Student {
+export function normalizeStudent(source: ApiRecord, fallback?: Student): Student {
   const activePackage = (pick<ApiRecord[]>(source, 'packages') ?? [])[0]
   const skills = normalizeSkills(pick(source, 'skills'))
   const history = normalizeHistory(pick(source, 'trainingHistory', 'training_history', 'history'))
 
   return {
-    id: numericId(pick(source, 'id'), fallback?.id ?? index + 1),
+    id: pick(source, 'id') || '',
     apiId: typeof pick(source, 'id') === 'string' ? pick(source, 'id') : fallback?.apiId,
+    createdAt: pick(source, 'createdAt', 'created_at') ?? fallback?.createdAt,
+    updatedAt: pick(source, 'updatedAt', 'updated_at') ?? fallback?.updatedAt,
     name: String(pick(source, 'name') ?? pick<ApiRecord>(source, 'user')?.displayName ?? fallback?.name ?? 'Ученик'),
     status: String(pick(source, 'status') ?? fallback?.status ?? 'активный'),
     level: levelFromApi(pick(source, 'level'), fallback?.level),
@@ -274,7 +280,7 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student, index = 
 export function normalizeBookingSlot(source: ApiRecord, index = 0): BookingSlot {
   const student = pick<ApiRecord>(source, 'student')
   const requestedBy = pick<ApiRecord>(source, 'requestedBy', 'requested_by')
-  const rawStudentId = pick(source, 'studentId', 'student_id') ?? pick(student, 'id')
+  const rawStudentId = pick(source, 'studentId', 'student_id') as string ?? pick(student, 'id') as string
   const previousStartsAt = pick(source, 'previousStartsAt', 'previous_starts_at')
   const previousDuration = pick(source, 'previousDurationMinutes', 'previous_duration_minutes')
 
@@ -289,7 +295,7 @@ export function normalizeBookingSlot(source: ApiRecord, index = 0): BookingSlot 
     previousDuration: previousStartsAt ? durationText(previousDuration) : undefined,
     title: pick(source, 'title'),
     location: pick(source, 'location'),
-    studentId: numericId(rawStudentId, 0) || undefined,
+    studentId: rawStudentId,
     studentApiId: typeof rawStudentId === 'string' ? rawStudentId : undefined,
     studentName: pick(student, 'name') ?? pick(requestedBy, 'displayName', 'display_name'),
     preference: pick(source, 'preference') ?? pick(source, 'title', 'location'),

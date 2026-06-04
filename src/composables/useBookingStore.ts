@@ -1,12 +1,13 @@
-import { computed, ref } from 'vue'
+import {computed, ref} from 'vue'
 import {
   cancelBookingSlot,
   confirmBookingSlot,
   createBookingSlot,
   declineBookingSlot,
   deleteBookingSlot,
-  fetchBookingSlots,
+  fetchAllBookingSlots,
   fetchInstructorCalendar,
+  fetchStudentBookingSlots,
   normalizeBookingSlots,
   requestBookingSlot,
   rescheduleBookingSlot,
@@ -14,12 +15,11 @@ import {
   slotToCreatePayload,
   updateBookingSlot,
 } from '../api/bookingSlots'
-import { TEST_USER_ID } from '../api/client'
-import { normalizeBookingSlot, type ApiRecord } from '../api/normalizers'
-import { bookingSlots } from '../mock/booking'
-import type { BookingSlot } from '../mock/types'
+import {TEST_USER_ID} from '../api/client'
+import {type ApiRecord, normalizeBookingSlot} from '../api/normalizers'
+import type {BookingSlot} from '../types/booking'
 
-const slots = ref<BookingSlot[]>(bookingSlots.map((slot) => ({ ...slot })))
+const slots = ref<BookingSlot[]>([])
 const activeStudentSlotId = ref<number | null>(null)
 const isBookingLoading = ref(false)
 const bookingError = ref('')
@@ -134,7 +134,7 @@ export function useBookingStore() {
     slots.value.filter((slot) => slot.status === 'confirmed'),
   )
 
-  function getStudentActiveSlots(studentId: number) {
+  function getStudentActiveSlots(studentId: string) {
     return slots.value.filter(
       (slot) =>
         slot.studentId === studentId &&
@@ -213,9 +213,8 @@ export function useBookingStore() {
       const response = await createBookingSlot(slotToCreatePayload(fallbackSlot))
       return upsertSlot(normalizeBookingSlot(response))
     } catch {
-      bookingError.value = 'Backend недоступен, слот добавлен только локально.'
-      slots.value.unshift(fallbackSlot)
-      return fallbackSlot
+      bookingError.value = 'Backend недоступен, слот не был добавлен.'
+      return undefined
     }
   }
 
@@ -236,9 +235,8 @@ export function useBookingStore() {
       const response = await updateBookingSlot(slot.apiId, slotPatchToPayload(nextSlot))
       return upsertSlot({ ...nextSlot, ...definedPatch(normalizeBookingSlot(response)) })
     } catch {
-      Object.assign(slot, patch)
-      bookingError.value = slot.apiId ? 'Backend недоступен, слот обновлен только локально.' : bookingError.value
-      return slot
+      bookingError.value = slot.apiId ? 'Backend недоступен, слот не был обновлен.' : bookingError.value
+      return undefined
     }
   }
 
@@ -246,11 +244,13 @@ export function useBookingStore() {
     const slot = slots.value.find((item) => item.id === id)
 
     try {
-      if (slot?.apiId) {
-        await deleteBookingSlot(slot.apiId)
+      if (!slot?.apiId) {
+        throw new Error('Slot has no backend id')
       }
+      await deleteBookingSlot(slot.apiId)
     } catch {
-      bookingError.value = 'Не удалось удалить слот на backend, удалили только локально.'
+      bookingError.value = 'Не удалось удалить слот на backend.'
+      return
     }
 
     slots.value = slots.value.filter((slot) => slot.id !== id)
@@ -262,7 +262,7 @@ export function useBookingStore() {
 
   async function requestSlot(
     id: number,
-    studentId: number,
+    studentId: string,
     preference: string,
     studentComment: string,
     status: BookingSlot['status'] = 'requested',
@@ -290,14 +290,10 @@ export function useBookingStore() {
         studentComment,
       })
       upsertSlotsFromResponse(response, { ...slot, ...patch })
+      activeStudentSlotId.value = id
     } catch {
-      if (slot) {
-        Object.assign(slot, patch)
-      }
-      bookingError.value = slot?.apiId ? 'Backend недоступен, заявка сохранена только локально.' : bookingError.value
+      bookingError.value = slot?.apiId ? 'Backend недоступен, заявка не была сохранена.' : bookingError.value
     }
-
-    activeStudentSlotId.value = id
   }
 
   async function confirmSlot(
@@ -326,11 +322,8 @@ export function useBookingStore() {
       })
       return upsertSlotsFromResponse(response, { ...slot, ...patch })
     } catch {
-      if (slot) {
-        Object.assign(slot, patch)
-      }
-      bookingError.value = slot?.apiId ? 'Backend недоступен, подтверждение сохранено только локально.' : bookingError.value
-      return slot
+      bookingError.value = slot?.apiId ? 'Backend недоступен, подтверждение не было сохранено.' : bookingError.value
+      return undefined
     }
   }
 
@@ -357,11 +350,8 @@ export function useBookingStore() {
       const response = await rescheduleBookingSlot(slot.apiId, slotToCreatePayload({ ...slot, ...nextTime }))
       return upsertSlotsFromResponse(response, { ...slot, ...patch })
     } catch {
-      if (slot) {
-        Object.assign(slot, patch)
-      }
-      bookingError.value = slot?.apiId ? 'Backend недоступен, перенос сохранен только локально.' : bookingError.value
-      return slot
+      bookingError.value = slot?.apiId ? 'Backend недоступен, перенос не был сохранен.' : bookingError.value
+      return undefined
     }
   }
 
@@ -386,11 +376,8 @@ export function useBookingStore() {
       const response = await declineBookingSlot(slot.apiId)
       return upsertSlotsFromResponse(response, { ...slot, status: 'cancelled' })
     } catch {
-      if (slot) {
-        Object.assign(slot, { status: 'cancelled' })
-      }
-      bookingError.value = slot?.apiId ? 'Backend недоступен, отклонение сохранено только локально.' : bookingError.value
-      return slot
+      bookingError.value = slot?.apiId ? 'Backend недоступен, отклонение не было сохранено.' : bookingError.value
+      return undefined
     }
   }
 
@@ -419,23 +406,34 @@ export function useBookingStore() {
       const response = await cancelBookingSlot(slot.apiId)
       return upsertSlotsFromResponse(response, { ...slot, ...patch })
     } catch {
-      if (slot) {
-        Object.assign(slot, patch)
-      }
-      bookingError.value = slot?.apiId ? 'Backend недоступен, отмена сохранена только локально.' : bookingError.value
-      return slot
+      bookingError.value = slot?.apiId ? 'Backend недоступен, отмена не была сохранена.' : bookingError.value
+      return undefined
     }
   }
 
-  async function loadBookingSlots() {
+  async function loadAllBookingSlots() {
     isBookingLoading.value = true
     bookingError.value = ''
 
     try {
-      const payload = await fetchBookingSlots()
+      const payload = await fetchAllBookingSlots()
       slots.value = normalizeBookingSlots(payload)
     } catch {
-      bookingError.value = 'Backend booking-slots недоступен, используем локальные слоты.'
+      bookingError.value = 'Backend booking-slots недоступен, данные не обновлены.'
+    } finally {
+      isBookingLoading.value = false
+    }
+  }
+
+  async function loadStudentBookingSlots(userId: string) {
+    isBookingLoading.value = true
+    bookingError.value = ''
+
+    try {
+      const payload = await fetchStudentBookingSlots(userId)
+      slots.value = normalizeBookingSlots(payload)
+    } catch {
+      bookingError.value = 'Backend booking-slots недоступен, данные не обновлены.'
     } finally {
       isBookingLoading.value = false
     }
@@ -450,13 +448,13 @@ export function useBookingStore() {
       const calendarSlots = normalizeBookingSlots(calendarPayload)
 
       try {
-        const bookingPayload = await fetchBookingSlots()
+        const bookingPayload = await fetchAllBookingSlots()
         slots.value = mergeSlotLists(normalizeBookingSlots(bookingPayload), calendarSlots)
       } catch {
         slots.value = calendarSlots
       }
     } catch {
-      bookingError.value = 'Backend calendar недоступен, используем локальные слоты.'
+      bookingError.value = 'Backend calendar недоступен, данные не обновлены.'
     } finally {
       isBookingLoading.value = false
     }
@@ -475,7 +473,8 @@ export function useBookingStore() {
     getStudentActiveSlots,
     isBookingLoading,
     bookingError,
-    loadBookingSlots,
+    loadAllBookingSlots,
+    loadStudentBookingSlots,
     loadInstructorCalendar,
     removeSlot,
     requestSlot,

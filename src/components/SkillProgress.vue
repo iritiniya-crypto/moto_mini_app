@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Skill } from '../mock/types'
+import type { Skill } from '../types/skill'
 
 defineProps<{
   skill: Skill

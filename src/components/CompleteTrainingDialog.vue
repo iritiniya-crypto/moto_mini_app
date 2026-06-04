@@ -2,8 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { useBookingStore } from '../composables/useBookingStore'
 import { useTrainingStore } from '../composables/useTrainingStore'
-import { skills } from '../mock/skills'
-import type {BookingSlot, Skill, Student} from '../mock/types'
+import { useUserStore } from '../stores/userStore'
+import type {BookingSlot} from '../types/booking'
+import type {Skill} from '../types/skill'
+import type {Student} from '../types/student'
 
 interface Props {
   open: boolean
@@ -21,6 +23,7 @@ const emit = defineEmits<Emits>()
 
 const { completeSlot, loadInstructorCalendar } = useBookingStore()
 const { createTrainingReport } = useTrainingStore()
+const userStore = useUserStore()
 
 const selectedSkills = ref<Skill[]>([])
 const skillImprovements = ref<Record<string, string>>({})
@@ -64,6 +67,14 @@ const durationMinutes = computed(() => {
 const dialogVisible = computed({
   get: () => props.open,
   set: (value: boolean) => emit('update:open', value),
+})
+
+const availableSkills = computed(() => {
+  if (props.student?.skills?.length) {
+    return props.student.skills
+  }
+
+  return userStore.skills
 })
 
 function initializeSkillImprovements() {
@@ -129,6 +140,15 @@ const isFormValid = computed(() => {
 function closeDialog() {
   emit('update:open', false)
 }
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen && userStore.skills.length === 0) {
+      userStore.loadSkills()
+    }
+  },
+)
 </script>
 
 <template>
@@ -163,7 +183,7 @@ function closeDialog() {
       <section>
         <label class="field-label">Что тренировали</label>
         <div class="skill-check-grid">
-          <label v-for="skill in skills" :key="skill.id" class="skill-check-item">
+          <label v-for="skill in availableSkills" :key="skill.id" class="skill-check-item">
             <input v-model="selectedSkills" type="checkbox" :value="skill" />
             <span>{{ skill.name }}</span>
           </label>

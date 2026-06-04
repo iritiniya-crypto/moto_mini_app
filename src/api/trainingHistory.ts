@@ -1,17 +1,13 @@
 import { postJson } from './client'
 import { dateTimeToIso, normalizeHistoryItem, type ApiRecord } from './normalizers'
-import type { TrainingHistory } from '../mock/types'
+import {API_ENDPOINTS} from '../types/api'
+import type { CreateManualTrainingHistoryRequest, TrainingHistory } from '../types/training'
 
-export type CreateManualTrainingHistoryPayload = {
-  trainedAt?: string
-  summary?: string
+export async function createManualTrainingHistory(studentId: string, payload: CreateManualTrainingHistoryRequest) {
+  return postJson<ApiRecord, CreateManualTrainingHistoryRequest>(API_ENDPOINTS.MANUAL_TRAINING_HISTORY(studentId), payload)
 }
 
-export async function createManualTrainingHistory(studentId: string, payload: CreateManualTrainingHistoryPayload) {
-  return postJson<ApiRecord, CreateManualTrainingHistoryPayload>(`/students/${studentId}/training-history/manual`, payload)
-}
-
-export function manualTrainingToPayload(training: Pick<TrainingHistory, 'date' | 'topics' | 'improved' | 'nextFocus'>): CreateManualTrainingHistoryPayload {
+export function manualTrainingToPayload(training: Pick<TrainingHistory, 'date' | 'topics' | 'improved' | 'nextFocus'>): CreateManualTrainingHistoryRequest {
   const summaryParts = [
     training.topics.length ? `Что тренировали: ${training.topics.join(', ')}` : '',
     training.improved ? `Что получилось: ${training.improved}` : '',

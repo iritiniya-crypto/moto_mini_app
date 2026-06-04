@@ -1,35 +1,16 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { fetchStudentPackage, normalizeTrainingPackage, packageToPayload, upsertStudentPackage } from '../api/packages'
-import { fetchStudentSkills, normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi } from '../api/skills'
+import {defineStore} from 'pinia'
+import {ref} from 'vue'
+import {fetchStudentPackage, normalizeTrainingPackage, packageToPayload, upsertStudentPackage} from '../api/packages'
+import {fetchStudentSkills, normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi} from '../api/skills'
 import {
   createStudent,
   fetchStudents,
   normalizeStudentResponse,
   normalizeStudents,
-  updateStudent,
   type StudentPayload,
+  updateStudent,
 } from '../api/students'
-import type { Student } from '../mock/types'
-
-function fallbackStudentFromPayload(payload: StudentPayload): Student {
-  return {
-    id: Date.now(),
-    name: payload.name,
-    status: 'новый ученик',
-    level: payload.level || 'Новичок',
-    completedTrainingsCount: 0,
-    nextLesson: 'Время еще не выбрано',
-    avatar: '',
-    focus: payload.nextTrainingPlan || payload.focus || '',
-    telegramUsername: payload.telegramUsername,
-    trainingPackage: {
-      total: 0,
-      completed: 0,
-      paymentStatus: 'не оплачено',
-    },
-  }
-}
+import type {Student} from '../types/student'
 
 export const useStudentsStore = defineStore('students', () => {
   const students = ref<Student[]>([])
@@ -38,22 +19,22 @@ export const useStudentsStore = defineStore('students', () => {
   const error = ref('')
   const usingFallback = ref(false)
 
-  function replaceStudent(studentId: number, patch: Partial<Student>) {
+  function replaceStudent(studentId: string, patch: Partial<Student>) {
     students.value = students.value.map((student) => (student.id === studentId ? { ...student, ...patch } : student))
   }
 
-  async function loadStudents(fallbackStudents: Student[] = []) {
+  async function loadStudents() {
     isLoading.value = true
     error.value = ''
 
     try {
       const payload = await fetchStudents()
-      students.value = normalizeStudents(payload, fallbackStudents)
+      students.value = normalizeStudents(payload)
       usingFallback.value = false
     } catch {
-      students.value = fallbackStudents
+      students.value = []
       usingFallback.value = true
-      error.value = 'Backend недоступен, показываем локальный список учеников.'
+      error.value = 'Backend недоступен, не удалось загрузить список учеников.'
     } finally {
       isLoading.value = false
     }
@@ -70,11 +51,8 @@ export const useStudentsStore = defineStore('students', () => {
       usingFallback.value = false
       return createdStudent
     } catch {
-      const fallbackStudent = fallbackStudentFromPayload(payload)
-      students.value = [...students.value, fallbackStudent]
       usingFallback.value = true
       error.value = 'Backend недоступен, ученик добавлен только локально.'
-      return fallbackStudent
     } finally {
       isSaving.value = false
     }
@@ -84,29 +62,20 @@ export const useStudentsStore = defineStore('students', () => {
     isSaving.value = true
     error.value = ''
 
-    const nextLocalStudent = {
-      ...student,
-      name: payload.name ?? student.name,
-      level: payload.level ?? student.level,
-      focus: payload.nextTrainingPlan ?? payload.focus ?? student.focus,
-      telegramUsername: payload.telegramUsername ?? student.telegramUsername,
-    }
-
     try {
       if (!student.apiId) {
         throw new Error('Student has no backend id')
       }
 
       const response = await updateStudent(student.apiId, payload)
-      const updatedStudent = normalizeStudentResponse(response, nextLocalStudent)
+      const updatedStudent = normalizeStudentResponse(response, student)
       students.value = students.value.map((item) => (item.id === student.id ? updatedStudent : item))
       usingFallback.value = false
       return updatedStudent
     } catch {
-      students.value = students.value.map((item) => (item.id === student.id ? nextLocalStudent : item))
       usingFallback.value = true
-      error.value = 'Backend недоступен, изменения сохранены только локально.'
-      return nextLocalStudent
+      error.value = 'Backend недоступен, изменения не сохранены.'
+      return student
     } finally {
       isSaving.value = false
     }
@@ -145,10 +114,9 @@ export const useStudentsStore = defineStore('students', () => {
       usingFallback.value = false
       return savedPackage
     } catch {
-      replaceStudent(student.id, { trainingPackage })
       usingFallback.value = true
-      error.value = 'Backend package недоступен, пакет сохранен только локально.'
-      return trainingPackage
+      error.value = 'Backend package недоступен, пакет не сохранен.'
+      return student.trainingPackage
     }
   }
 
@@ -183,10 +151,9 @@ export const useStudentsStore = defineStore('students', () => {
       usingFallback.value = false
       return savedSkills
     } catch {
-      replaceStudent(student.id, { skills })
       usingFallback.value = true
-      error.value = 'Backend skills недоступен, навыки сохранены только локально.'
-      return skills
+      error.value = 'Backend skills недоступен, навыки не сохранены.'
+      return student.skills
     }
   }
 

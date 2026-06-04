@@ -1,17 +1,16 @@
-<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { TEST_USER_ID } from '../api/client'
-import { numericId } from '../api/normalizers'
-import SectionHeader from '../components/SectionHeader.vue'
-import { useBookingStore } from '../composables/useBookingStore'
-import type { BookingSlot } from '../mock/types'
+<script lang="ts" setup>
+import {computed, onMounted, ref} from 'vue'
+import {TEST_USER_ID} from '../../api/client.ts'
+import SectionHeader from '../../components/SectionHeader.vue'
+import {useBookingStore} from '../../composables/useBookingStore.ts'
+import type {BookingSlot} from '../../types/booking'
 
 const props = defineProps<{
   role: 'student' | 'instructor'
 }>()
 
-const { addSlot, bookingManagementSlots, loadBookingSlots, removeSlot, requestSlot, updateSlot, availableSlots, slots } = useBookingStore()
-const currentStudentId = TEST_USER_ID ? numericId(TEST_USER_ID, 1) : 1
+const { addSlot, bookingManagementSlots, loadAllBookingSlots, removeSlot, requestSlot, updateSlot, availableSlots, slots } = useBookingStore()
+const currentStudentId = TEST_USER_ID
 const slotDialogOpen = ref(false)
 const editingSlotId = ref<number | null>(null)
 const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
@@ -132,23 +131,23 @@ async function saveSlot() {
   } else {
     await addSlot(nextSlot)
   }
-  await loadBookingSlots()
+  await loadAllBookingSlots()
   slotDialogOpen.value = false
 }
 
 async function bookSlot(slot: BookingSlot) {
   await requestSlot(slot.id, currentStudentId, 'Не знаю / нужна консультация', '', 'requested', TEST_USER_ID)
-  await loadBookingSlots()
+  await loadAllBookingSlots()
   bookedSlotId.value = slot.id
 }
 
 async function deleteSlot(id: number) {
   await removeSlot(id)
-  await loadBookingSlots()
+  await loadAllBookingSlots()
 }
 
 onMounted(() => {
-  loadBookingSlots()
+  loadAllBookingSlots()
 })
 </script>
 
@@ -166,8 +165,8 @@ onMounted(() => {
         </p>
         <Button
           v-if="props.role === 'instructor'"
-          label="Добавить слот"
           icon="pi pi-plus"
+          label="Добавить слот"
           @click="openAddSlot"
         />
       </template>
@@ -183,19 +182,19 @@ onMounted(() => {
                 <span>{{ slot.date }}</span>
                 <strong>{{ slot.time }}</strong>
               </div>
-              <Tag :value="statusLabel(slot.status)" :severity="statusSeverity(slot.status)" />
+              <Tag :severity="statusSeverity(slot.status)" :value="statusLabel(slot.status)" />
             </div>
             <p>{{ durationText(slot.duration) }}</p>
 
             <div v-if="props.role === 'instructor' && slot.status === 'available'" class="slot-actions">
               <Button label="Редактировать" size="small" @click="openEditSlot(slot)" />
-              <Button label="Удалить" icon="pi pi-trash" size="small" severity="secondary" @click="deleteSlot(slot.id)" />
+              <Button icon="pi pi-trash" label="Удалить" severity="secondary" size="small" @click="deleteSlot(slot.id)" />
             </div>
 
             <Button
               v-else-if="slot.status === 'available'"
-              label="Забронировать время"
               icon="pi pi-send"
+              label="Забронировать время"
               size="small"
               @click="bookSlot(slot)"
             />
@@ -216,7 +215,7 @@ onMounted(() => {
       </template>
     </Card>
 
-    <Dialog v-model:visible="slotDialogOpen" modal header="Слот для записи" class="moto-dialog">
+    <Dialog v-model:visible="slotDialogOpen" class="moto-dialog" header="Слот для записи" modal>
       <div class="form-stack">
         <label>
           Дата
@@ -224,13 +223,13 @@ onMounted(() => {
         </label>
         <label>
           Время
-          <DatePicker v-model="slotForm.timeValue" time-only hour-format="24" show-icon />
+          <DatePicker v-model="slotForm.timeValue" hour-format="24" show-icon time-only />
         </label>
         <label>
           Длительность
           <Select v-model="slotForm.duration" :options="durationOptions" />
         </label>
-        <Button label="Сохранить слот" icon="pi pi-check" @click="saveSlot" />
+        <Button icon="pi pi-check" label="Сохранить слот" @click="saveSlot" />
       </div>
     </Dialog>
   </section>
