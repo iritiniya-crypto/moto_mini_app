@@ -1,4 +1,4 @@
-:root {
+:root, :host {
   --bg: #07090d;
   --panel: rgba(20, 24, 31, 0.82);
   --panel-strong: rgba(28, 33, 42, 0.94);
@@ -10,6 +10,7 @@
   --dim: #657184;
   --accent: #df3f3f;
   --accent-2: #f4ba45;
+  --accent-2-background: rgba(244, 186, 69, 0.2);
   --ok: #49d597;
   --info: #72a7ff;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
@@ -22,6 +23,16 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+@media (prefers-color-scheme: dark) {
+  :root, :host {
+    --p-primary-color: var(--accent-2) !important;
+    --p-primary-contrast-color: var(--bg) !important;
+    --p-tag-primary-background: var(--accent-2-background) !important;
+    --p-tag-primary-color: var(--accent-2) !important;
+  }
+}
+
 
 * {
   box-sizing: border-box;
@@ -313,7 +324,6 @@ p {
 .request-card span,
 .request-card small,
 .telegram-preview span {
-  color: var(--muted);
   font-size: 0.82rem;
 }
 
@@ -368,15 +378,6 @@ p {
 .p-progressbar-value {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
-}
-
-.p-tag {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 0.72rem;
-  font-weight: 700;
 }
 
 .p-tag-success {
@@ -950,27 +951,6 @@ p {
   color: #100d0b;
   background: linear-gradient(135deg, #fff4cf, #df3f3f);
   font-weight: 900;
-}
-
-.p-button {
-  justify-content: center;
-  min-height: 42px;
-  border: 0;
-  border-radius: 15px;
-  color: #120d08;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  font-weight: 800;
-  box-shadow: 0 12px 32px rgba(223, 63, 63, 0.22);
-}
-
-.p-button-secondary {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: none;
-}
-
-.p-button-sm {
-  min-height: 36px;
 }
 
 .action-grid .p-button:last-child:nth-child(3) {

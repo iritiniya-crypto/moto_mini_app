@@ -401,7 +401,7 @@ onMounted(async () => {
               <Tag severity="warn" value="Запрос на перенос" />
             </div>
             <div class="slot-actions">
-              <Button icon="pi pi-check" label="Подтвердить перенос" size="small" @click="openConfirmRequest(move)" />
+              <Button icon="pi pi-check" label="Подтвердить перенос" security="primary" size="small" @click="openConfirmRequest(move)" />
               <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(move)" />
             </div>
           </template>

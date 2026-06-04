@@ -461,9 +461,8 @@ function removeSkill(id: number) {
   <section class="stack">
     <Card class="hero-card profile">
       <template #content>
-        <Tag value="профиль инструктора" />
-        <h1>Артем Соколов</h1>
-        <p>@artem_moto · частный мотоинструктор</p>
+        <h1>Никита Ноготочки 💅</h1>
+        <p>@Nikita_Alex_Vietnam · частный мотоинструктор</p>
       </template>
     </Card>
 

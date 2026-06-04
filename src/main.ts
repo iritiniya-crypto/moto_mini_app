@@ -1,8 +1,7 @@
 import 'primeicons/primeicons.css'
-import './style.css'
 
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import {createApp} from 'vue'
+import {createPinia} from 'pinia'
 import App from './App.vue'
 
 import WebApp from '@twa-dev/sdk'
@@ -19,13 +18,23 @@ import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
-
+import Aura from '@primeuix/themes/aura';
+import './style.css'
 
 
 const app = createApp(App)
 const pinia = createPinia()
 
-app.use(PrimeVue)
+app.use(PrimeVue, {
+  theme: {
+    preset: Aura
+  },
+  options: {
+    darkModeSelector: '.dark-mode',
+    cssLayer: true,
+  },
+});
+
 app.use(pinia)
 app.component('Avatar', Avatar)
 app.component('Button', Button)
