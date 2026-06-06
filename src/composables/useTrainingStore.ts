@@ -1,5 +1,9 @@
 import {computed, ref} from 'vue'
-import {normalizeTrainingPackage, packageToPayload, upsertStudentPackage as upsertStudentPackageApi} from '../api/packages'
+import {
+  normalizeTrainingPackage,
+  packageToPayload,
+  upsertStudentPackage as upsertStudentPackageApi
+} from '../api/packages'
 import {normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi} from '../api/skills'
 import {createManualTrainingHistory, manualTrainingToPayload} from '../api/trainingHistory'
 import {createTrainingReportApi} from '../api/trainingReports'
@@ -100,8 +104,8 @@ export function useTrainingStore() {
 
       return saveReportLocally(
         report,
-        typeof response.report.id === 'string' ? response.report.id : undefined,
-        typeof response.trainingHistory.id === 'string' ? response.trainingHistory.id : undefined,
+        response.report.id,
+        response.trainingHistory.id,
       )
     } catch {
       return null

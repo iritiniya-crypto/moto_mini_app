@@ -23,7 +23,7 @@ type CalendarTraining = BookingSlot & {
 }
 
 const calendarOpen = ref(false)
-const calendarFilter = ref<CalendarFilter>('all')
+const calendarFilter = ref<CalendarFilter>('confirmed')
 const selectedReportTraining = ref<CalendarTraining | null>(null)
 const trainingHistoryBySlotId = ref<Record<number, TrainingHistory>>({})
 const calendarFilters: { label: string; value: CalendarFilter }[] = [
@@ -352,34 +352,38 @@ onMounted(async () => {
       <div class="stack tight">
         <Card v-for="request in requests" :key="request.id" class="request-card">
           <template #content>
-            <div class="request-top">
-              <Avatar image="student-avatar.png" shape="circle" />
-              <div>
-                <h3>{{ request.student }}</h3>
-                <span>{{ request.date }} · {{ request.time }} · {{ durationText(request.duration) }}</span>
-                <small>Пожелание: {{ request.preference || 'Не знаю / нужна консультация' }}</small>
-                <small v-if="request.studentComment">Комментарий: "{{ request.studentComment }}"</small>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+              <div style="display: flex; gap: 2rem;">
+                <div style="display: flex; align-items: center; justify-content: center">
+                  <Avatar image="student-avatar.png" shape="circle" size="large" style="width: 100px; height: 100px;"/>
+                </div>
+                <div style="display: flex; gap: 1rem; flex-direction: column; align-items: flex-end; justify-content: flex-start">
+                  <h3>{{ request.student }}</h3>
+                  <p style="text-align: right">{{ request.date }} · {{ request.time }} · {{ durationText(request.duration) }}</p>
+                  <p style="text-align: right">Пожелание: {{ request.preference || 'Не знаю / нужна консультация' }}</p>
+                  <p v-if="request.studentComment" style="text-align: right">Комментарий: "{{ request.studentComment }}"</p>
+                </div>
               </div>
               <Tag
-                :severity="request.status === 'confirmed' ? 'success' : request.status === 'cancelled' ? 'secondary' : 'warn'"
-                :value="request.status === 'confirmed' ? 'Подтверждено' : request.status === 'cancelled' ? 'Отклонено' : 'Ожидает подтверждения'"
+                  :severity="request.status === 'confirmed' ? 'success' : request.status === 'cancelled' ? 'secondary' : 'warn'"
+                  :value="request.status === 'confirmed' ? 'Подтверждено' : request.status === 'cancelled' ? 'Отклонено' : 'Ожидает подтверждения'"
               />
-            </div>
-            <div v-if="request.status === 'requested'" class="slot-actions">
-              <Button icon="pi pi-check" label="Подтвердить" size="small" @click="openConfirmRequest(request)" />
-              <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(request)" />
-            </div>
-            <div v-if="request.status === 'confirmed'" class="booking-summary">
-              <span>Место: {{ request.finalLocation }}</span>
-              <a
-                v-if="request.finalLocationUrl"
-                :href="request.finalLocationUrl"
-                class="location-link"
-                rel="noreferrer"
-                target="_blank"
-              >
-                Открыть локацию
-              </a>
+              <div v-if="request.status === 'requested'" class="slot-actions">
+                <Button icon="pi pi-check" label="Подтвердить" size="small" @click="openConfirmRequest(request)" />
+                <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(request)" />
+              </div>
+              <div v-if="request.status === 'confirmed'" class="booking-summary">
+                <span>Место: {{ request.finalLocation }}</span>
+                <a
+                    v-if="request.finalLocationUrl"
+                    :href="request.finalLocationUrl"
+                    class="location-link"
+                    rel="noreferrer"
+                    target="_blank"
+                >
+                  Открыть локацию
+                </a>
+              </div>
             </div>
           </template>
         </Card>
@@ -554,6 +558,7 @@ onMounted(async () => {
               :href="selectedReportTraining.history.videoUrl"
               class="location-link primary"
               rel="noreferrer"
+              style="margin-top: 8px;"
               target="_blank"
             >
               Открыть видео в Telegram

@@ -37,6 +37,7 @@ defineProps<{
         :href="lesson.videoUrl"
         class="location-link"
         rel="noreferrer"
+        style="margin-top: 8px;"
         target="_blank"
       >
         Открыть видео в Telegram

@@ -1,5 +1,6 @@
 export * from './api'
 export type * from './booking'
+export type * from './instructor'
 export type * from './package'
 export type * from './skill'
 export type * from './student'

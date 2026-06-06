@@ -51,6 +51,7 @@ export const API_ENDPOINTS = {
   HEALTH: '/health',
   STUDENTS: '/students',
   STUDENT_PROFILE: (id: string) => `/students/${id}/profile`,
+  INSTRUCTOR_PROFILE: (id: string) => `/instructors/${id}/profile`,
   STUDENT_UPDATE: (id: string) => `/students/${id}`,
   STUDENT_PACKAGE: (studentId: string) => `/students/${studentId}/package`,
   STUDENT_SKILLS: (studentId: string) => `/students/${studentId}/skills`,

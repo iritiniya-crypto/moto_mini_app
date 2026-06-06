@@ -30,8 +30,6 @@
     --p-primary-contrast-color: var(--bg) !important;
     --p-tag-primary-background: var(--accent-2-background) !important;
     --p-tag-primary-color: var(--accent-2) !important;
-    --p-avatar-width: auto !important;
-    --p-avatar-height: auto !important;
   }
 }
 
@@ -250,6 +248,7 @@ p {
 
 .hero-card p {
   margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .student-home-hero h1 {
@@ -1332,14 +1331,8 @@ p {
 }
 
 .student-dialog-header {
-  display: grid;
-  grid-template-columns: 84px 1fr;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border: 1px solid rgba(244, 186, 69, 0.18);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.055);
+  display: flex;
+  gap: 16px;
 }
 
 .student-dialog-header h3 {

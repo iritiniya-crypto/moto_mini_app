@@ -1,16 +1,20 @@
 import {defineStore} from 'pinia'
 import {ref} from 'vue'
-import {TEST_USER_ID} from '@/api/client'
+import {TEST_INSTRUCTOR_ID, TEST_USER_ID} from '@/api/client'
 import {fetchHealth, type HealthResponse} from '@/api/health'
+import {fetchInstructorProfile, normalizeInstructorProfile} from '@/api/instructors'
 import {fetchSkills, normalizeSkillDefinitions} from '@/api/skills'
 import {fetchStudentProfile, normalizeStudentProfile} from '@/api/studentProfile'
 import {fetchStudents, normalizeStudents} from '@/api/students'
-import type {Skill, Student} from '@/types'
+import type {InstructorProfile, Skill, Student} from '@/types'
 
 export const useUserStore = defineStore('user', () => {
   const health = ref<HealthResponse | null>(null)
   const healthError = ref('')
   const profile = ref<Student | null>(null)
+  const instructorProfile = ref<InstructorProfile | null>(null)
+  const isInstructorProfileLoading = ref(false)
+  const instructorProfileError = ref('')
   const isProfileLoading = ref(false)
   const profileError = ref('')
   const students = ref<Student[]>([])
@@ -84,13 +88,37 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function loadInstructorProfile(instructorId: string) {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 6000)
+    const apiInstructorId = TEST_INSTRUCTOR_ID || instructorId
+
+    isInstructorProfileLoading.value = true
+    instructorProfileError.value = ''
+
+    try {
+      const payload = await fetchInstructorProfile(apiInstructorId, controller.signal)
+      instructorProfile.value = normalizeInstructorProfile(payload)
+    } catch {
+      instructorProfile.value = null
+      instructorProfileError.value = 'Backend недоступен, профиль инструктора не загружен.'
+    } finally {
+      window.clearTimeout(timeout)
+      isInstructorProfileLoading.value = false
+    }
+  }
+
   return {
     checkHealth,
     health,
     healthError,
+    instructorProfile,
+    instructorProfileError,
+    isInstructorProfileLoading,
     isProfileLoading,
     isSkillsLoading,
     isStudentsLoading,
+    loadInstructorProfile,
     loadSkills,
     loadProfile,
     loadStudents,

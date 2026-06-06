@@ -138,6 +138,7 @@ export const useStudentsStore = defineStore('students', () => {
   }
 
   async function saveStudentSkills(student: Student, skills: NonNullable<Student['skills']>) {
+    console.log('saveStudentSkills', { student, skills })
     try {
       const payload = skillsToPayload(skills)
 

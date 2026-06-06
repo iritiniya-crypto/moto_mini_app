@@ -8,7 +8,6 @@ import SkillProgress from '@/components/SkillProgress.vue'
 import {useUserStore} from '@/stores/userStore.ts'
 import {TEST_USER_ID} from '@/api/client.ts'
 import type {PaymentStatus} from '@/types/package'
-import type {Student} from '@/types/student'
 
 defineProps<{
   role: 'student' | 'instructor'
@@ -21,25 +20,12 @@ const {
   profileError,
 } = storeToRefs(userStore)
 
-const fallbackStudent: Student = {
-  id: TEST_USER_ID,
-  name: 'Ученик',
-  status: 'активный',
-  level: 'Новичок',
-  completedTrainingsCount: 0,
-  nextLesson: 'Время еще не выбрано',
-  avatar: '',
-  focus: '',
-  skills: [],
-  trainingHistory: [],
-}
-
-const studentProfile = computed(() => apiProfile.value || fallbackStudent)
-const studentTrainingHistory = computed(() => studentProfile.value.trainingHistory || [])
-const studentSkills = computed(() => studentProfile.value.skills || [])
+const studentProfile = computed(() => apiProfile.value)
+const studentTrainingHistory = computed(() => studentProfile.value?.trainingHistory || [])
+const studentSkills = computed(() => studentProfile.value?.skills || [])
 const studentPackage = computed(
   () =>
-    studentProfile.value.trainingPackage || {
+    studentProfile.value?.trainingPackage || {
       total: 0,
       completed: 0,
       paymentStatus: 'не оплачено' as PaymentStatus,
@@ -62,11 +48,15 @@ onMounted(() => {
     <Card class="hero-card profile">
       <template #content>
         <div class="student-top">
-          <Avatar image="student-avatar.png" shape="circle" size="xlarge" />
-          <div>
-            <h1>{{ studentProfile.name }}</h1>
-            <p>{{ studentProfile.level }}</p>
+          <Avatar image="student-avatar.png" shape="circle" size="xlarge" style="width: 115px; height: 115px;"/>
+          <div style="display: flex; flex-direction: column; align-items: flex-end">
+            <h1>{{ studentProfile?.name }}</h1>
+            <p>Уровень: {{ studentProfile?.level }}</p>
           </div>
+        </div>
+        <div class="student-instructor-info">
+          <p>Инструктор: {{ studentProfile?.instructor?.firstName || 'Не назначен' }} {{ studentProfile?.instructor?.lastName || '' }}</p>
+          <p>Телеграм: {{ studentProfile?.instructor?.telegramUsername ? `@${studentProfile.instructor.telegramUsername}` : 'Не указан' }}</p>
         </div>
         <p v-if="isProfileLoading" class="status-message">Загружаем профиль из backend...</p>
         <p v-else-if="profileError" class="status-message">{{ profileError }}</p>
@@ -74,8 +64,8 @@ onMounted(() => {
     </Card>
 
     <div class="metric-grid">
-      <MetricCard :value="studentProfile.completedTrainingsCount" hint="в журнале" label="Тренировок" />
-      <MetricCard :value="studentProfile.level" hint="текущий" label="Уровень" />
+      <MetricCard :value="studentProfile?.completedTrainingsCount || 0" hint="в журнале" label="Тренировок" />
+      <MetricCard :value="studentProfile?.level || 0" hint="текущий" label="Уровень" />
       <MetricCard :hint="studentPackage.paymentStatus" :value="studentPackageText" label="Пакет" />
     </div>
 

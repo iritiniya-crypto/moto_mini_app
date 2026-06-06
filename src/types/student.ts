@@ -26,6 +26,16 @@ export interface ApiStudentProfile extends ApiStudent {
   videos: TrainingVideo[]
 }
 
+export interface StudentInstructor {
+  id: string
+  firstName: string
+  lastName: string
+  telegramUsername?: string
+  userId: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type Student = {
   id: string
   apiId?: string
@@ -42,6 +52,7 @@ export type Student = {
   trainingHistory?: TrainingHistory[]
   telegramUsername?: string
   trainingPackage?: TrainingPackage
+  instructor?: StudentInstructor
 }
 
 export interface CreateStudentRequest {

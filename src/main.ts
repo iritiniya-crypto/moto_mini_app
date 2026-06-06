@@ -20,6 +20,7 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import Aura from '@primeuix/themes/aura';
 import './style.css'
+import {MultiSelect} from "primevue";
 
 
 const app = createApp(App)
@@ -48,6 +49,7 @@ app.component('ProgressBar', ProgressBar)
 app.component('Select', Select)
 app.component('Tag', Tag)
 app.component('Textarea', Textarea)
+app.component('MultiSelect', MultiSelect)
 
 app.mount('#app')
 

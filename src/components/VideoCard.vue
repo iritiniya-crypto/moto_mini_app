@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import type { Video } from '../types/training'
+<script lang="ts" setup>
+import type {Video} from '../types/training'
 
 defineProps<{
   video: Video
@@ -20,7 +20,7 @@ defineProps<{
         <span>{{ video.date }} · {{ video.theme }}</span>
         <p>{{ video.comment }}</p>
         <small>{{ video.telegramUrl }}</small>
-        <a class="location-link" :href="video.telegramUrl" target="_blank" rel="noreferrer">
+        <a :href="video.telegramUrl" class="location-link" rel="noreferrer" style="margin-top: 8px;" target="_blank">
           Открыть видео в Telegram
         </a>
       </div>

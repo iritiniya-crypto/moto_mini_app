@@ -1,11 +1,11 @@
 export const standardLocations = [
   {
     name: 'Площадка Запад',
-    locationUrl: 'https://maps.google.com/?q=Ploshchadka+Zapad',
+    locationUrl: 'https://maps.app.goo.gl/G2id3Bi9tEbFR6t57',
   },
   {
     name: 'Серпантин',
-    locationUrl: 'https://maps.google.com/?q=Serpantin+Nha+Trang',
+    locationUrl: 'https://maps.app.goo.gl/BdwBBoRnrjWE6jon8',
   },
   {
     name: 'Город',

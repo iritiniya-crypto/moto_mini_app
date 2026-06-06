@@ -16,6 +16,8 @@ import type {Student} from '@/types/student'
 import type {TrainingHistory} from '@/types/training'
 import {durationOptions} from "@/dictionary/durationOptions.ts";
 
+const DEFAULT_INSTRUCTOR_ID = 'dev-instructor-nikita'
+
 defineProps<{
   role: 'student' | 'instructor'
 }>()
@@ -56,7 +58,6 @@ const manualTrainingOpen = ref(false)
 const isManualTrainingSaving = ref(false)
 const videoOpen = ref(false)
 const newStudentStatuses = ref<Record<string, Exclude<NewStudentStatus, 'new'>>>({})
-const customSkill = ref('')
 const studentName = ref('')
 const trainingPlan = ref(selectedStudent.value?.focus || '')
 const level = ref('')
@@ -92,18 +93,25 @@ const newStudentForm = ref({
 
 const allStudents = computed(() => (apiStudents.value.length > 0 ? apiStudents.value : studentsStore.students))
 const activeStudents = computed(() => allStudents.value.length)
+const instructorFullName = computed(() => userStore.instructorProfile?.fullName || 'Инструктор')
+const instructorUsername = computed(() => {
+  const username = userStore.instructorProfile?.telegramUsername
+  return username ? `@${username.replace(/^@/, '')}` : '@username'
+})
+const instructorSubtitle = computed(() => `${instructorUsername.value} · частный мотоинструктор`)
 const newStudents = computed<NewStudentListItem[]>(() => {
   return allStudents.value
     .filter((student) => isRecentStudent(student.createdAt))
     .map((student) => ({
       id: student.id,
       name: student.name,
-      username: telegramHandle(student),
+      username: student.telegramUsername ?? '',
       comment: student.focus || 'Ожидает первичную консультацию.',
       date: formatStudentDate(student.createdAt),
       status: newStudentStatuses.value[student.id] ?? 'new',
     }))
 })
+
 
 const selectedStudentSlots = computed(() =>
   slots.value.filter(
@@ -121,6 +129,7 @@ const selectedStudentVideoSlots = computed(() =>
 
 onMounted(() => {
   userStore.checkHealth()
+  userStore.loadInstructorProfile(DEFAULT_INSTRUCTOR_ID)
   userStore.loadSkills()
   studentsStore.loadStudents()
 })
@@ -154,15 +163,11 @@ async function openStudentCard(nextStudent: Student) {
     trainingPackage: apiPackage ?? currentStudent.trainingPackage,
     skills: apiSkills ?? currentStudent.skills,
   }
-  updateStudent(selectedStudent.value.id, selectedStudent.value)
+  await updateStudent(selectedStudent.value.id, selectedStudent.value)
   packageTotal.value = selectedStudent.value.trainingPackage?.total ?? 0
   packageCompleted.value = selectedStudent.value.trainingPackage?.completed ?? 0
   packagePaymentStatus.value = selectedStudent.value.trainingPackage?.paymentStatus ?? 'не оплачено'
   editableSkills.value = (selectedStudent.value.skills || []).map((skill) => ({ ...skill }))
-}
-
-function telegramHandle(nextStudent: Student) {
-  return nextStudent.telegramUsername || `@${nextStudent.name.split(' ')[0].toLowerCase()}_moto`
 }
 
 function formatStudentDate(value?: string) {
@@ -238,7 +243,7 @@ async function saveStudentChanges() {
   })
   const savedSkills = await studentsStore.saveStudentSkills(updatedStudentFromApi, editableSkills.value)
 
-  updateStudent(currentStudent.id, {
+  await updateStudent(currentStudent.id, {
     name: updatedStudentFromApi.name,
     level: updatedStudentFromApi.level,
     focus: updatedStudentFromApi.focus,
@@ -407,14 +412,6 @@ async function saveTrainingVideo() {
   videoOpen.value = false
 }
 
-function acceptNewStudent(id: string) {
-  newStudentStatuses.value[id] = 'accepted'
-}
-
-function declineNewStudent(id: string) {
-  newStudentStatuses.value[id] = 'declined'
-}
-
 async function addManualStudent() {
   const name = newStudentForm.value.name.trim()
 
@@ -431,25 +428,10 @@ async function addManualStudent() {
   })
 
   if (createdStudent) {
-    updateStudent(createdStudent.id, createdStudent)
+    await updateStudent(createdStudent.id, createdStudent)
   }
   newStudentForm.value = { name: '', username: '', comment: '' }
   addStudentOpen.value = false
-}
-
-function addSkill() {
-  const name = customSkill.value.trim()
-
-  if (!name) {
-    return
-  }
-
-  editableSkills.value.push({
-    id: Date.now(),
-    name,
-    oldValue: 0,
-  })
-  customSkill.value = ''
 }
 
 function removeSkill(id: number) {
@@ -461,8 +443,10 @@ function removeSkill(id: number) {
   <section class="stack">
     <Card class="hero-card profile">
       <template #content>
-        <h1>Никита Ноготочки 💅</h1>
-        <p>@Nikita_Alex_Vietnam · частный мотоинструктор</p>
+        <h1>{{ instructorFullName }}</h1>
+        <p>{{ instructorSubtitle }}</p>
+        <small v-if="userStore.isInstructorProfileLoading">Загружаем профиль инструктора...</small>
+        <small v-else-if="userStore.instructorProfileError">{{ userStore.instructorProfileError }}</small>
       </template>
     </Card>
 
@@ -483,17 +467,9 @@ function removeSkill(id: number) {
             <div class="request-top">
               <div>
                 <h3>{{ item.name }}</h3>
-                <span>{{ item.username }} · {{ item.date }}</span>
+                <span><a :href="`https://t.me/${item.username}`">@{{ item.username }}</a> · {{ item.date }}</span>
                 <small>{{ item.comment }}</small>
               </div>
-              <Tag
-                :severity="item.status === 'accepted' ? 'success' : item.status === 'declined' ? 'secondary' : 'warn'"
-                :value="item.status === 'accepted' ? 'Принят' : item.status === 'declined' ? 'Отклонен' : 'Новый'"
-              />
-            </div>
-            <div v-if="item.status === 'new'" class="slot-actions">
-              <Button icon="pi pi-check" label="Принять" size="small" @click="acceptNewStudent(item.id)" />
-              <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineNewStudent(item.id)" />
             </div>
           </template>
         </Card>
@@ -514,7 +490,7 @@ function removeSkill(id: number) {
         >
           <template #content>
             <div class="student-top">
-              <Avatar image="student-avatar.png" shape="circle" />
+              <Avatar image="student-avatar.png" shape="circle"/>
               <div>
                 <h3>{{ student.name }}</h3>
                 <span>{{ student.level }} · {{ student.completedTrainingsCount }} тренировок</span>
@@ -533,7 +509,7 @@ function removeSkill(id: number) {
         </label>
         <label>
           Telegram username
-          <InputText v-model="newStudentForm.username" placeholder="@username" />
+          <InputText v-model="newStudentForm.username" placeholder="username" />
         </label>
         <label>
           Комментарий
@@ -551,11 +527,15 @@ function removeSkill(id: number) {
     <Dialog v-if="selectedStudent" v-model:visible="studentDialogOpen" :draggable="false" class="moto-dialog student-card-dialog" header="Карточка ученика" modal>
       <div class="form-stack student-dialog-content">
         <div class="student-dialog-header">
-          <Avatar class="student-dialog-avatar" image="student-avatar.png" shape="circle" />
-          <div>
-            <h3>{{ selectedStudent.name }}</h3>
-            <span>{{ telegramHandle(selectedStudent) }}</span>
-            <strong>{{ selectedStudent.level }}</strong>
+          <div style="display: flex; gap: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: center">
+              <Avatar image="student-avatar.png" shape="circle" size="large" style="width: 100px; height: 100px;"/>
+            </div>
+          </div>
+          <div style="display: flex; gap: 1rem; flex-direction: column; align-items: flex-end; justify-content: flex-start">
+            <h3 style="text-align: right">{{ selectedStudent.name }}</h3>
+            <span style="text-align: right">@{{ selectedStudent.telegramUsername }}</span>
+            <strong style="text-align: right">{{ selectedStudent.level }}</strong>
           </div>
         </div>
 
@@ -633,6 +613,9 @@ function removeSkill(id: number) {
         </div>
 
         <SectionHeader title="Навыки" />
+        <label>
+          <MultiSelect v-model="editableSkills" :max-selected-labels="2" :options="userStore.skills" option-label="name"/>
+        </label>
         <div v-if="editableSkills.length > 0" class="skill-edit-list">
           <label v-for="skill in editableSkills" :key="skill.id" class="skill-edit-row skill-percent-row">
             <span>{{ skill.name }}</span>
@@ -646,12 +629,6 @@ function removeSkill(id: number) {
             <Button icon="pi pi-trash" severity="secondary" size="small" @click="removeSkill(skill.id)" />
           </label>
         </div>
-
-        <label>
-          Добавить навык
-          <InputText v-model="customSkill" placeholder="например, маневрирование" />
-        </label>
-        <Button icon="pi pi-plus" label="Добавить навык" @click="addSkill" />
       </div>
     </Dialog>
 

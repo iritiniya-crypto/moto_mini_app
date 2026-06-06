@@ -257,6 +257,7 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
   const activePackage = (pick<ApiRecord[]>(source, 'packages') ?? [])[0]
   const skills = normalizeSkills(pick(source, 'skills'))
   const history = normalizeHistory(pick(source, 'trainingHistory', 'training_history', 'history'))
+  const instructor = pick<ApiRecord>(source, 'instructor')
 
   return {
     id: pick(source, 'id') || '',
@@ -274,6 +275,17 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
     trainingPackage: normalizePackage(activePackage) ?? fallback?.trainingPackage,
     skills: skills.length > 0 ? skills : fallback?.skills,
     trainingHistory: history.length > 0 ? history : fallback?.trainingHistory,
+    instructor: instructor
+      ? {
+          id: String(pick(instructor, 'id') ?? fallback?.instructor?.id ?? ''),
+          firstName: String(pick(instructor, 'firstName', 'first_name') ?? fallback?.instructor?.firstName ?? ''),
+          lastName: String(pick(instructor, 'lastName', 'last_name') ?? fallback?.instructor?.lastName ?? ''),
+          telegramUsername: pick(instructor, 'telegramUsername', 'telegram_username') ?? fallback?.instructor?.telegramUsername,
+          userId: String(pick(instructor, 'userId', 'user_id') ?? fallback?.instructor?.userId ?? ''),
+          createdAt: pick(instructor, 'createdAt', 'created_at') ?? fallback?.instructor?.createdAt,
+          updatedAt: pick(instructor, 'updatedAt', 'updated_at') ?? fallback?.instructor?.updatedAt,
+        }
+      : fallback?.instructor,
   }
 }
 
