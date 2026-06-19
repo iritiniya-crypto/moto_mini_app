@@ -559,7 +559,7 @@ function removeSkill(id: number) {
         </label>
         <label>
           Уровень
-          <Select v-model="level" :options="['Новичок', 'База', 'Уверенный старт', 'Город', 'Профи']" />
+          <Select v-model="level" :options="['Новичок', 'База', 'Средний', 'Профи']" />
         </label>
         <section class="package-editor">
           <SectionHeader title="Пакет тренировок" />

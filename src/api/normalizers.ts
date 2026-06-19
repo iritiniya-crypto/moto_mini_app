@@ -107,9 +107,7 @@ export function levelToApi(value: string) {
   const map: Record<string, string> = {
     Новичок: 'BEGINNER',
     База: 'BASIC',
-    'Уверенный старт': 'INTERMEDIATE',
     Средний: 'INTERMEDIATE',
-    Город: 'ADVANCED',
     Профи: 'ADVANCED',
     BEGINNER: 'BEGINNER',
     BASIC: 'BASIC',
@@ -124,8 +122,8 @@ export function levelFromApi(value: unknown, fallback = 'Новичок') {
   const map: Record<string, string> = {
     BEGINNER: 'Новичок',
     BASIC: 'База',
-    INTERMEDIATE: 'Уверенный старт',
-    ADVANCED: 'Город',
+    INTERMEDIATE: 'Средний',
+    ADVANCED: 'Профи',
   }
 
   return map[String(value)] || String(value || fallback)

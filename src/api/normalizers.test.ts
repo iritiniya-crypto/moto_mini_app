@@ -28,8 +28,8 @@ describe('normalizers', () => {
   })
 
   it('maps level values between API and UI labels', () => {
-    expect(levelToApi('Город')).toBe('ADVANCED')
-    expect(levelFromApi('INTERMEDIATE')).toBe('Уверенный старт')
+    expect(levelToApi('Профи')).toBe('ADVANCED')
+    expect(levelFromApi('INTERMEDIATE')).toBe('Средний')
   })
 
   it('maps payment statuses from API values', () => {

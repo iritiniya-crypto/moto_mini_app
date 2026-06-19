@@ -31,7 +31,7 @@ const nextFocus = ref('')
 const levelUpdate = ref<string | null>(null)
 const isSaving = ref(false)
 
-const levelOptions = ['Новичок', 'База', 'Уверенный старт', 'Город', 'Профи']
+const levelOptions = ['Новичок', 'База', 'Средний', 'Профи']
 
 watch(
   () => [props.open, props.student],
