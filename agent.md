@@ -1,515 +1,475 @@
-# 🏍️ Moto Mini App — Agent Guide
+# Moto Mini App — актуальная карта проекта
 
-## 📌 Описание проекта
+Последнее обновление: 19 июня 2026.
 
-**Moto Mini App** — Telegram Mini App (встраиваемое веб-приложение) для мотошколы с функционалом управления тренировками, студентами и навыками.
+Этот файл — рабочий source of truth для будущих задач. Если старые обсуждения или комментарии противоречат этому документу, ориентироваться на этот файл, `API.md` и текущий код.
 
-**Инструктор:** Никита
-**Цель:** Управление учебным процессом, записями на тренировки, отслеживание прогресса студентов
+## Продукт
 
----
+Telegram Mini App для мотошколы Никиты.
 
-## 🎯 Основной функционал
+Роли:
 
-### 1. Для инструктора (Никита)
+- `student` — ученик: профиль, запись, мои тренировки, видео.
+- `instructor` — Никита: ученики, слоты, заявки, переносы, календарь, отчеты.
+- `admin` зарезервирован в backend/user model, но во frontend UI сейчас не используется.
 
-#### Dashboard
-- 📊 Список студентов с уровнями и прогрессом
-- 📅 Сегодняшнее расписание тренировок
-- 📝 Новые запросы на запись от студентов
-- 🔄 Запросы на перенос тренировок
+## Стек
 
-#### Управление слотами (BookingView)
-- ➕ Создание свободных временных слотов
-- ✏️ Редактирование доступности
-- 🔧 Настройка локаций и времени
+Frontend:
 
-#### Подтверждение тренировок
-- 📌 Список новых запросов от студентов
-- ✅ Подтверждение с выбором финальной локации
-- 💬 Добавление комментариев для студентов
-- 📍 Привязка Google Maps ссылки
+- Vue 3 Composition API.
+- TypeScript.
+- Vite.
+- Pinia.
+- Axios.
+- PrimeVue + PrimeIcons.
+- Telegram Mini App SDK через `@twa-dev/sdk`.
 
-#### **⭐ Завершение тренировок (Новое)**
-- 🎯 Dialog "Завершить тренировку"
-- ✓ Выбор тренировавшихся навыков (9 вариантов)
-- 📋 Описание достижений и фокуса на следующую тренировку
-- 📊 Оценка прогресса каждого навыка:
-  - Без изменений (+0%)
-  - Немного лучше (+5%)
-  - Заметно лучше (+10%)
-  - Нужно повторить (+0%)
-- 🎓 Изменение уровня студента при необходимости
-- 💾 Автоматическое обновление всех данных студента
+Backend:
 
-#### Управление студентами
-- 👥 Карточка каждого студента с полной информацией
-- 📝 История тренировок студента
-- 📈 Прогресс навыков с процентами
-- 🎬 Добавление видео из Telegram
-- ✍️ Заметки инструктора
+- NestJS.
+- Prisma.
+- PostgreSQL.
+- API prefix: `/api`.
+- Dev backend по умолчанию: `http://127.0.0.1:3001/api`.
+- Auth пока dev/mock: `VITE_APP_TEST_USER_ID`, `VITE_APP_TEST_INSTRUCTOR_ID`.
 
-### 2. Для студента
+## Текущая структура frontend
 
-#### Профиль
-- 👤 Личные данные
-- 📊 Статистика:
-  - Количество завершенных тренировок
-  - Текущий уровень
-  - История всех тренировок
-  - Прогресс по каждому навику (0-100%)
-  - Заметки инструктора с фокусом
-
-#### Запись на тренировку (MyTrainingsView)
-- 📅 Список свободных слотов
-- 💬 Возможность оставить пожелание и комментарий
-- 📍 Выбор предпочитаемой локации
-- ✓ Подтверждение запроса
-
-#### История тренировок
-- 📖 Полная история с датами и описаниями
-- 🎯 Что тренировали на каждой тренировке
-- 💡 Что получилось (достижения)
-- 🔮 Фокус для следующей тренировки
-- 💬 Комментарии инструктора
-
-### 3. Видеоматериалы
-
-#### VideosView (только для студентов)
-- 🎬 Библиотека видео с инструктором
-- 🏷️ Тэги по темам
-- 📝 Описания и заметки
-- 🔗 Ссылки на Telegram видео
-
----
-
-## 🏗️ Архитектура и технологии
-
-### Frontend Stack
-```
-Vue 3 (Composition API)
-├── TypeScript
-├── Vite (сборка и dev server)
-├── Tailwind CSS (стили)
-└── PrimeVue (компоненты UI)
-```
-
-### Структура проекта
-```
+```text
 src/
-├── components/          # Vue компоненты
-│   ├── CompleteTrainingDialog.vue    ⭐ Новое
+├── api/                         # axios API wrappers + normalizers
+│   ├── bookingSlots.ts
+│   ├── client.ts
+│   ├── health.ts
+│   ├── instructors.ts
+│   ├── normalizers.ts
+│   ├── packages.ts
+│   ├── skills.ts
+│   ├── studentProfile.ts
+│   ├── students.ts
+│   ├── trainingHistory.ts
+│   ├── trainingReports.ts
+│   └── videos.ts
+├── components/
+│   ├── CompleteTrainingDialog.vue
 │   ├── LessonCard.vue
-│   ├── SkillProgress.vue
 │   ├── MetricCard.vue
-│   ├── VideoCard.vue
-│   └── SectionHeader.vue
-│
-├── composables/         # Бизнес-логика (Composition API)
-│   ├── useTrainingStore.ts           ⭐ Новое
-│   └── useBookingStore.ts            ⭐ Обновлено
-│
-├── views/              # Страницы приложения
-│   ├── InstructorDashboard.vue       ⭐ Обновлено
-│   ├── ProfileView.vue               ⭐ Обновлено
-│   ├── BookingView.vue               ⭐ Обновлено
-│   ├── MyTrainingsView.vue           ⭐ Обновлено
-│   ├── StudentDashboard.vue
-│   └── VideosView.vue
-│
-├── layouts/            # Макеты
-│   └── AppShell.vue
-│
-├── mock/               # Mock данные
-│   ├── types.ts        ⭐ Обновлено
-│   ├── students.ts     ⭐ Обновлено
-│   ├── booking.ts      ⭐ Обновлено
-│   ├── skills.ts       ⭐ Обновлено
-│   ├── lessons.ts
-│   ├── videos.ts
+│   ├── SectionHeader.vue
+│   ├── SkillProgress.vue
+│   └── VideoCard.vue
+├── composables/
+│   ├── useBookingStore.ts       # booking slots/calendar actions
+│   └── useTrainingStore.ts      # reports/history/videos/packages helpers
+├── constants/
+│   ├── locations.ts
 │   └── trainingContent.ts
-│
-├── assets/
+├── dictionary/
+│   └── durationOptions.ts
+├── layouts/
+│   └── AppShell.vue
+├── stores/
+│   ├── studentsStore.ts         # instructor student list/edit/package/skills
+│   └── userStore.ts             # current student/instructor profile, health, skills
+├── types/
+│   ├── api.ts
+│   ├── booking.ts
+│   ├── instructor.ts
+│   ├── package.ts
+│   ├── skill.ts
+│   ├── student.ts
+│   ├── training.ts
+│   └── user.ts
+├── views/
+│   ├── VideosView.vue
+│   ├── instructor/
+│   │   ├── BookingView.vue
+│   │   ├── InstructorDashboard.vue
+│   │   └── InstructorProfileView.vue
+│   └── student/
+│       ├── MyTrainingsView.vue
+│       ├── StudentDashboard.vue
+│       └── StudentProfileView.vue
 ├── App.vue
-└── main.ts
+├── main.ts
+└── style.css
 ```
 
-### Типы данных
+## API layer
 
-#### Student
-```typescript
-{
-  id: number
-  name: string
-  status: string                          // Текущий фокус
-  level: string                           // Новичок, База, Уверенный старт, Город, Профи
-  completedTrainingsCount: number         // Сколько тренировок завершено
-  nextLesson: string
-  avatar: string                          // Инициалы
-  focus: string                           // Что тренировать дальше
-  skills?: Skill[]                        // Навыки с процентами
-  trainingHistory?: TrainingHistory[]     // История всех тренировок
-  notes?: string                          // Последние заметки инструктора
-  telegramUsername?: string
-}
+Базовый URL берется из:
+
+1. `VITE_APP_BASE_URL`
+2. `VITE_API_BASE_URL`
+3. fallback `http://127.0.0.1:3001/api`
+
+Все frontend API calls должны идти через `src/api/*` и `API_ENDPOINTS` из `src/types/api.ts`.
+
+Важно:
+
+- Не делать запросы на `/students` без `/api`.
+- Не делать `/api/api/...`.
+- Payload должен соответствовать DTO из `API.md`.
+- Не отправлять поля, которых нет в DTO.
+- Для report использовать `trainedSkills`, `improved`, `nextFocus`, `levelUpdate`.
+- Не возвращать старые `notes/comment` поля в report DTO.
+
+## Booking statuses
+
+Единственный актуальный набор статусов:
+
+```ts
+type BookingSlotStatus =
+  | 'available'
+  | 'requested'
+  | 'reschedule'
+  | 'confirmed'
+  | 'completed'
+  | 'cancelled'
 ```
 
-#### BookingSlot
-```typescript
-{
-  id: number
-  date: string                            // "28 мая"
-  time: string                            // "18:30"
-  duration: string                        // "90 мин"
-  studentId?: number                      // Кто записан
-  preference?: string                     // Где хочет ученик
-  studentComment?: string                 // Комментарий ученика
-  finalLocation?: string                  // Где будет (после подтверждения)
-  finalLocationUrl?: string               // Maps ссылка
-  instructorComment?: string              // Комментарий Никиты
-  status: 'available'                     // Свободно
-       | 'requested'                      // Ученик запросил
-       | 'confirmed'                      // Никита подтвердил
-       | 'completed'    ⭐ НОВОЕ         // Проведено
-       | 'cancelled'
-       | 'unavailable'
-       | 'rescheduleRequested'
-       | 'rescheduled'
-}
+Не использовать старые статусы:
+
+- `unavailable`
+- `rescheduleRequested`
+- `rescheduled`
+- `next`
+
+## Booking flow
+
+### `available`
+
+Свободный слот.
+
+Показывается:
+
+- ученикам как доступное время;
+- Никите в слотах для записи;
+- в календаре Никиты как свободное окно.
+
+Можно:
+
+- редактировать;
+- удалить;
+- запросить учеником.
+
+### `requested`
+
+Ученик отправил заявку.
+
+Показывается:
+
+- Никите в “Новые запросы на запись”;
+- ученику в “Ближайшая тренировка” / “Мои тренировки” как ожидание подтверждения.
+
+Не показывается как свободный слот другим ученикам.
+
+### `reschedule`
+
+Ученик запросил перенос confirmed-тренировки.
+
+Показывается:
+
+- Никите в “Запросы на перенос”;
+- ученику как ожидание переноса;
+- в календаре Никиты как `запрос на перенос`.
+
+Не должен попадать в “Новые запросы на запись”.
+
+UI показывает компактно:
+
+```text
+17 мая 17:30 → 18 мая 09:00
 ```
 
-#### TrainingReport ⭐ НОВОЕ
-```typescript
-{
-  id: number
-  studentId: number
-  slotId: number
-  date: string
-  duration: string
-  location: string
-  trainedSkills: string[]                 // Выбранные навыки
-  improved: string                        // Что получилось
-  nextFocus: string                       // Фокус на следующую тренировку
-  instructorComment: string               // Комментарий для ученика
-  skillUpdates: Record<string, string>    // {skillName: 'Немного лучше'}
-  levelUpdate?: string                    // Новый уровень (если менялся)
-  createdAt: number
-}
+### `confirmed`
+
+Никита подтвердил заявку или перенос.
+
+Показывается:
+
+- ученику в “Ближайшая тренировка” и “Мои тренировки”;
+- Никите в “Сегодня”, если дата сегодня;
+- Никите в календаре.
+
+Не показывается как свободный слот.
+
+### `completed`
+
+Тренировка проведена.
+
+Показывается:
+
+- в истории тренировок;
+- в отчетах;
+- во вкладке видео, если есть видео.
+
+Не показывается:
+
+- в свободных слотах;
+- в “Сегодня”;
+- в активных тренировках ученика.
+
+### `cancelled`
+
+Используется для instructor decline (`requested/reschedule -> cancelled`).
+
+Для ученической отмены не использовать как финальное UI-состояние: cancel возвращает тот же слот в `available`.
+
+## Student cancel flow
+
+Endpoint:
+
+```http
+POST /api/booking-slots/:slotId/cancel
 ```
 
-#### TrainingHistory ⭐ НОВОЕ
-```typescript
-{
-  id: number
-  date: string
-  duration: string
-  theme: string                           // Описание тренировки
-  topics: string[]                        // Навыки
-  comment: string                         // Комментарий Никиты
-  mistakes: string[]
-  improved: string                        // Достижения
-  hasVideo: boolean
-  instructorComment?: string
-  nextFocus?: string                      // Фокус
-  skillUpdates?: Record<string, number>   // {skillName: percentage}
-}
+Allowed statuses:
+
+- `requested`
+- `reschedule`
+- `confirmed`
+
+После cancel:
+
+- тот же `BookingSlot` становится `available`;
+- `studentId`, requester, comments, final location, previous time fields очищаются;
+- новый слот не создается;
+- слот снова доступен ученикам;
+- у ученика тренировка исчезает из “Ближайшая тренировка” и “Мои тренировки”;
+- у Никиты исчезает из “Сегодня”, “Новые запросы”, “Запросы на перенос” и занятой части календаря.
+
+Текст предупреждения в UI:
+
+```text
+Если отмена происходит в день тренировки, занятие считается проведенным и может быть списано из пакета.
 ```
 
----
+## Reschedule flow
 
-## ⭐ Новый функционал: Логика проведенной тренировки
+Не переписывать без прямого запроса.
 
-### Что добавлено
+Текущая frontend-логика:
 
-#### 1. Dialog завершения тренировки
-- **Компонент:** `CompleteTrainingDialog.vue`
-- **Открывается:** Кнопкой "Проведено" в подтвержденной тренировке
-- **Содержит:**
-  - Выбор навыков (9 доступных)
-  - Описание достижений
-  - Фокус на следующую тренировку
-  - Комментарий для ученика
-  - Оценка прогресса каждого навыка
-  - Выбор уровня студента
+1. Ученик нажимает “Перенести” у `confirmed` тренировки.
+2. `MyTrainingsView` включает локальный режим переноса.
+3. Экран плавно скроллится к существующей секции свободных слотов.
+4. Над слотами показывается плашка:
+   - “Выберите новое время”
+   - “Перенос тренировки <дата> • <время>”
+   - “Отменить перенос”
+5. Кнопки available-слотов меняются на “Выбрать новое время”.
+6. “Отменить перенос” сбрасывает только local UI state и не вызывает backend.
+7. Выбор нового времени вызывает `POST /booking-slots/:slotId/reschedule`.
+8. Никита видит запрос в “Запросы на перенос”.
+9. `POST /booking-slots/:slotId/confirm` подтверждает перенос.
 
-#### 2. useTrainingStore
-- **Файл:** `src/composables/useTrainingStore.ts`
-- **Методы:**
-  - `createTrainingReport()` — создает отчет и обновляет все данные студента
-  - `getStudent(id)` — получает студента
-  - `getStudentTrainingHistory(id)` — история студента
-  - `getStudentSkills(id)` — навыки студента
-  - `updateStudent()` — обновляет данные
+После подтвержденного переноса backend/current data model может вернуть несколько измененных слотов. Frontend `useBookingStore` умеет upsertить:
 
-#### 3. Автоматическое обновление при сохранении отчета
-- ✅ Статус слота: `confirmed` → `completed`
-- ✅ Счетчик: `completedTrainingsCount + 1`
-- ✅ История: добавляется новая запись тренировки
-- ✅ Навыки: обновляются на выбранный процент (+0%, +5%, +10%)
-- ✅ Заметки: обновляются из `nextFocus`
-- ✅ Уровень: меняется если Никита выбрал другой
-- ✅ Фокус студента: обновляется
+- single slot response;
+- `slot`;
+- `oldSlot` / `previousSlot` / `availableSlot`;
+- `newSlot` / `targetSlot` / `confirmedSlot`;
+- `slots` / `bookingSlots` / `updatedSlots`.
 
-### Доступные навыки (9 шт)
-1. Овал
-2. Восьмерка
-3. Змейка
-4. Торможение
-5. Работа со сцеплением
-6. Медленная езда
-7. Развороты
-8. Взгляд в поворот
-9. Движение в городе
+Ожидаемое состояние после подтверждения переноса:
 
-### Уровни оценки прогресса
-- `Без изменений` = +0%
-- `Немного лучше` = +5%
-- `Заметно лучше` = +10%
-- `Нужно повторить` = +0% (но отмечается в заметках)
+- старое окно снова `available`;
+- новая тренировка `confirmed`;
+- у ученика видна только новая confirmed-тренировка;
+- старое время доступно другим ученикам.
 
-**Ограничение:** Процент не может быть > 100% и < 0%
+## Instructor dashboard
 
----
+`src/views/instructor/InstructorDashboard.vue`
 
-## 🎨 UI/UX особенности
+Содержит:
 
-### Дизайн
-- **Палитра:** Dark premium (серый, черный, синий)
-- **Фон:** `bg-gray-900`, `bg-gray-800`
-- **Текст:** `text-white`, `text-gray-300`
-- **Кнопки:** Синие (`bg-blue-600`), серые (`bg-gray-800`)
-- **Бордеры:** `border-gray-700`
+- “Сегодня” — только текущий день и статусы `requested`, `reschedule`, `confirmed`.
+- “Новые запросы на запись” — только `requested`.
+- “Запросы на перенос” — только `reschedule`.
+- “Календарь” agenda-view с фильтрами:
+  - Все
+  - Свободно
+  - Ожидают
+  - Переносы
+  - Подтверждено
+  - Проведено
 
-### Адаптивность
-- **Mobile-first** подход
-- Dialog прилипает к низу на мобильном (`rounded-t-3xl`)
-- Полная ширина на мобильных
-- Max-width 2xl на десктопе
-- Скроллируемый контент
+Отдельного блока “Подтвержденные тренировки” на главной нет.
 
-### Интернационализация
-- 🇷🇺 **Полностью на русском языке**
-- Все лейблы, плейсхолдеры, кнопки — на русском
-- Понятные названия и инструкции
+## Student trainings
 
----
+`src/views/student/MyTrainingsView.vue`
 
-## 🔄 Data Flow (Workflow)
+Показывает:
 
-### Полный цикл тренировки
+- “Ближайшая тренировка” — ближайшая активная тренировка ученика;
+- “Мои тренировки” — все активные тренировки ученика со статусами `requested`, `reschedule`, `confirmed`;
+- “Свободное время” — только `available`;
+- кнопка “Перенести” только у `confirmed`;
+- кнопка “Отменить” у активных тренировок.
 
-```
-┌─────────────────────────────────────────────────────┐
-│ STAGE 1: СОЗДАНИЕ СЛОТА (Никита)                  │
-├─────────────────────────────────────────────────────┤
-│ BookingView                                         │
-│ └─ Создает свободный слот → Status: "available"   │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│ STAGE 2: ЗАПРОС СТУДЕНТА                           │
-├─────────────────────────────────────────────────────┤
-│ MyTrainingsView (студент видит свободный слот)    │
-│ └─ Записывается на тренировку                      │
-│    Status: "requested"                             │
-│    Заполняет: пожелание, комментарий, локацию     │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│ STAGE 3: ПОДТВЕРЖДЕНИЕ (Никита)                   │
-├─────────────────────────────────────────────────────┤
-│ InstructorDashboard → "Новые запросы"              │
-│ └─ Подтверждает запись                             │
-│    Выбирает финальную локацию                      │
-│    Пишет комментарий для ученика                   │
-│    Status: "confirmed"                             │
-│    Тренировка видна в "Подтвережденные тренировки"│
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│ STAGE 4: ПРОВЕДЕНИЕ ТРЕНИРОВКИ ⭐ (Никита)        │
-├─────────────────────────────────────────────────────┤
-│ InstructorDashboard → "Подтвережденные"            │
-│ └─ Нажимает "Проведено" → Dialog открывается      │
-│    CompleteTrainingDialog                          │
-│    ├─ Выбирает навыки (чекбоксы)                  │
-│    ├─ Описывает что получилось                     │
-│    ├─ Пишет фокус на следующую тренировку        │
-│    ├─ Пишет комментарий                           │
-│    ├─ Оценивает прогресс каждого навыка          │
-│    ├─ Может поменять уровень студента             │
-│    └─ Нажимает "Сохранить отчет"                 │
-│    Status: "completed"                             │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│ STAGE 5: ОБНОВЛЕНИЕ ДАННЫХ СТУДЕНТА ⭐           │
-├─────────────────────────────────────────────────────┤
-│ useTrainingStore.createTrainingReport()            │
-│ └─ Автоматически обновляет:                       │
-│    ✓ completedTrainingsCount + 1                   │
-│    ✓ trainingHistory + новая запись               │
-│    ✓ skills[].value += delta (0%, 5%, 10%)        │
-│    ✓ notes = nextFocus                             │
-│    ✓ level = новый уровень (если менялся)        │
-│    ✓ focus = nextFocus                             │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│ STAGE 6: ВИДНО В ПРОФИЛЕ СТУДЕНТА                 │
-├─────────────────────────────────────────────────────┤
-│ ProfileView (студент видит все обновленные данные) │
-│ ├─ Счетчик тренировок: обновлен                    │
-│ ├─ Уровень: обновлен                               │
-│ ├─ История: новая запись (сверху)                  │
-│ ├─ Навыки: обновленные проценты                    │
-│ └─ Заметки: последний фокус инструктора            │
-└─────────────────────────────────────────────────────┘
+## Reports and history
+
+Отчет после тренировки содержит только:
+
+- что тренировали (`trainedSkills`);
+- что получилось (`improved`);
+- на что обратить внимание (`nextFocus`);
+- уровень ученика (`levelUpdate`, optional).
+
+Не использовать:
+
+- “Комментарий для ученика”;
+- “Заметки инструктора”;
+- генерацию hero notes из отчета.
+
+После сохранения отчета:
+
+- backend создает report;
+- backend создает training history;
+- slot становится `completed`;
+- история и календарь обновляются из API.
+
+История тренировок показывает:
+
+- дата;
+- длительность;
+- локация, если есть;
+- что тренировали;
+- что получилось;
+- на что обратить внимание;
+- видео, если есть.
+
+Не дублировать навыки отдельными тегами, если они уже перечислены как текст.
+
+## Skills progress
+
+В “Прогрессе навыков” показывать только:
+
+- название навыка;
+- процент.
+
+Не показывать старые mock descriptions/notes под навыками.
+
+## Training packages
+
+Пакет тренировок — ручной учет текущего активного пакета.
+
+Поля:
+
+- `totalTrainings`;
+- `completedTrainings`;
+- `paymentStatus`;
+- `startedAt`;
+- `endedAt`;
+- `isActive`.
+
+Важно:
+
+- отчет после тренировки не увеличивает пакет автоматически;
+- история тренировок отдельно;
+- общий счетчик проведенных тренировок считается из history/profile, не из ручного пакета.
+
+## Manual training history
+
+Ручное добавление тренировки существующему ученику:
+
+```http
+POST /api/students/:studentId/training-history/manual
 ```
 
----
+Это уже проведенная тренировка:
 
-## 🛠️ Используемые инструменты
+- не создает booking slot;
+- не попадает в расписание;
+- добавляется в историю;
+- видео добавляется отдельно через training history video endpoint, если указано.
 
-### Основные зависимости
-```json
-{
-  "vue": "^3.3.4",                   // Vue 3 framework
-  "typescript": "^5.0.0",            // TypeScript
-  "vite": "^8.0.0",                  // Bundler & dev server
-  "tailwindcss": "^3.x",             // CSS utility framework
-  "primevue": "^3.52.0",             // UI component library
-  "primeicons": "^6.0.1"             // Icon library
-}
+## Videos
+
+Видео привязано к конкретной training history:
+
+```http
+POST /api/training-history/:historyId/videos
 ```
 
-### Инструменты разработки
-```
-npm run dev              # Запустить dev сервер (http://localhost:5173+)
-npm run build            # Собрать для production (vue-tsc + vite build)
-npm run preview          # Превью production сборки
+Во frontend видео показывается из profile/history response.
 
-npm install             # Установить зависимости
-```
+## Stores
 
-### Файловая структура конфигов
-```
-tsconfig.json           # TypeScript основной конфиг
-tsconfig.app.json       # TypeScript для приложения
-tsconfig.node.json      # TypeScript для dev tools
-vite.config.ts          # Vite конфигурация
-package.json            # NPM зависимости и скрипты
-```
+`useBookingStore`:
 
----
+- хранит slots;
+- загружает all slots, student slots и instructor calendar;
+- делает booking write actions;
+- не должен глобально переписываться без прямого запроса;
+- при backend error показывает ошибку и не должен silently mutate confirmed backend state.
 
-## 💾 Хранение данных
+`useTrainingStore`:
 
-### In-Memory Store (текущая реализация)
-- Все данные в памяти приложения (`ref()` в composables)
-- Сбрасываются при перезагрузке страницы
-- **Нормально для MVP/прототипа**
+- сохраняет reports/history/videos/packages через API wrappers;
+- после write action перезагружает profile/history там, где нужно.
 
-### Будущие возможности подключения БД
-- Backend API (Express, Django, FastAPI)
-- Supabase (PostgreSQL + Auth)
-- Firebase (Realtime Database)
-- MongoDB
-- Другая реляционная БД
+`useUserStore`:
 
----
+- health;
+- current student profile;
+- instructor profile;
+- students list;
+- skills dictionary.
 
-## 🎯 Важные моменты для работы с проектом
+`useStudentsStore`:
 
-### При добавлении новой тренировки/навыка
-1. Обновить `availableSkills` в `src/mock/skills.ts`
-2. Убедиться что `useTrainingStore` правильно обновляет проценты
-3. Проверить что новый навык показывается в `CompleteTrainingDialog`
+- instructor student list;
+- create/update student;
+- package;
+- skills.
 
-### При изменении структуры Student
-1. Обновить тип в `src/mock/types.ts`
-2. Обновить mock данные в `src/mock/students.ts`
-3. Обновить все views которые используют Student
-4. Обновить `useTrainingStore` если добавилось новое поле
+## UI rules
 
-### При добавлении новой роли (не просто student/instructor)
-1. Обновить тип `Role` в `App.vue`
-2. Добавить логику в `currentView` computed
-3. Создать новую view компоненту
+- Сохранять текущий dark premium стиль.
+- Не делать landing вместо рабочего экрана.
+- Не добавлять большие визуальные рефакторы без прямого запроса.
+- PrimeVue components использовать в существующем стиле.
+- Mobile-first.
+- Проверять, что текст не вылезает из кнопок/карточек.
 
-### Debug и тестирование
-- Можно открыть DevTools браузера (F12)
-- Посмотреть реактивные данные в Vue DevTools
-- Проверить Network вкладку (мок запросы)
+## Safety rules for future work
 
----
+Проект считается стабильным.
 
-## 📊 Статистика проекта
+Нельзя без прямого запроса:
 
-- **Компонентов:** 8+ (включая новый CompleteTrainingDialog)
-- **Composables:** 2 (useBookingStore, useTrainingStore)
-- **Views:** 6 (InstructorDashboard, ProfileView, BookingView, MyTrainingsView, StudentDashboard, VideosView)
-- **Mock типов:** 7 (Student, BookingSlot, TrainingReport, TrainingHistory, Skill, Video, Lesson)
-- **Доступных навыков:** 9
-- **Уровней студента:** 5
-- **Статусов тренировки:** 8
+- менять backend endpoints;
+- менять Prisma schema;
+- менять модель статусов;
+- переписывать booking/reschedule/cancel flow;
+- глобально переписывать stores;
+- удалять fallback/dev guards;
+- менять визуальный стиль;
+- трогать unrelated files;
+- объединять несколько задач в одну.
 
----
+Перед изменениями:
 
-## 🚀 Следующие шаги для развития
+1. Прочитать `agent.md` и `API.md`.
+2. Найти текущую рабочую логику.
+3. Кратко описать, что будет изменено.
+4. Менять минимальный набор файлов.
+5. Проверять build/dev smoke-check, если задача frontend.
 
-### Priority 1 (Важное)
-1. Подключить реальный backend для сохранения данных
-2. Добавить аутентификацию (по Telegram ID)
-3. Настроить WebSocket для real-time обновлений
+Проверки:
 
-### Priority 2 (Полезное)
-1. Добавить уведомления (Bell icon)
-2. Экспорт отчетов по студентам (PDF/Excel)
-3. Статистика по прогрессу (графики)
-4. Поиск по студентам
+- Frontend: `npm run build`.
+- Frontend UI: `npm run dev` + browser smoke-check.
+- Backend: `npx prisma migrate status` и `npm run build`.
+- API changes: Network без 400/404.
 
-### Priority 3 (Улучшение UX)
-1. Аватарки студентов (вместо инициалов)
-2. Фильтры (по уровню, по датам)
-3. Сортировка списков
-4. Темы оформления
+## Current known recent changes
 
----
-
-## 📝 Стандарты проекта
-
-### Код
-- ✅ Vue 3 Composition API (не Options API)
-- ✅ TypeScript (полная типизация)
-- ✅ Композитные компоненты (Composition Components)
-- ✅ Reactive refs для состояния
-- ✅ Computed для производных значений
-
-### Стиль
-- ✅ Tailwind CSS утилиты
-- ✅ Dark premium палитра
-- ✅ Mobile-first адаптивность
-- ✅ PrimeVue компоненты где возможно
-
-### Язык
-- ✅ Все на русском
-- ✅ Понятные названия переменных
-- ✅ Четкие комментарии (минимум)
-
----
-
-## 🔗 Связанные файлы и документы
-
-- `package.json` — зависимости и скрипты
-- `vite.config.ts` — конфигурация bundler'а
-- `tsconfig.json` — конфиг TypeScript
-- `tailwind.config.js` — конфиг стилей (если есть)
-- `index.html` — точка входа приложения
-- `src/main.ts` — инициализация Vue приложения
-
----
-
-**Последнее обновление:** 27 мая 2026
-**Версия функционала:** 1.0 (с полной логикой проведенных тренировок)
-**Статус:** Production-ready MVP ✅
+- Instructor `BookingView` DatePicker ограничивает выбор прошлыми датами/временем через `minDate`.
+- Student cancel warning text: “занятие считается проведенным…”.
+- Student reschedule UX: автоскролл к слотам, плашка режима переноса, local-only cancel move mode.

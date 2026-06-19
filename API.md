@@ -1,18 +1,19 @@
 # Moto Mini App Backend API
 
-Документация актуальна на 04 июня 2026. Включает все endpoints, DTO с валидацией, типизацию для фронтенда.
+Документация актуальна на 19 июня 2026. Включает все endpoints, DTO с валидацией, типизацию для фронтенда.
 
 Последние обновления:
 - Добавлен параметр `studentId` в GET /booking-slots для фильтрации слотов по студентам
+- Зафиксированы текущие booking/cancel/reschedule правила для frontend integration
 - Все DTO полностью задокументированы с типами полей и валидацией
 
 ## Base URL
 
 ```text
-http://localhost:3000/api
+http://127.0.0.1:3001/api
 ```
 
-Если порт `3000` занят, можно запустить backend на другом порту:
+Если порт `3001` занят, можно запустить backend на другом порту:
 
 ```bash
 PORT=3002 npm run start:dev
@@ -707,7 +708,23 @@ Checks:
 
 ### POST /booking-slots/:slotId/confirm
 
-Переводит слот `requested -> confirmed` или `reschedule -> confirmed`.
+Подтверждает новую заявку или запрос на перенос.
+
+Transitions:
+
+- `requested -> confirmed`
+- `reschedule -> confirmed`
+
+Для обычного `requested` подтверждается тот же слот.
+
+Для `reschedule` актуальное бизнес-ожидание такое:
+
+- старое окно тренировки возвращается в `available`;
+- новая тренировка становится `confirmed`;
+- ученик после reload видит только новое confirmed-время;
+- старое окно снова доступно другим ученикам.
+
+Frontend после confirm должен refresh/upsert booking slots and calendar, потому что response может быть как single slot, так и wrapper с несколькими измененными слотами.
 
 DTO: `ConfirmBookingSlotDto`.
 
@@ -740,9 +757,13 @@ Checks:
 
 ### POST /booking-slots/:slotId/reschedule
 
-Переводит уже подтвержденную запись `confirmed -> reschedule` на том же `slotId`.
+Создает запрос на перенос уже подтвержденной тренировки.
 
-Backend сохраняет старое confirmed-время в `previousStartsAt` и `previousDurationMinutes`, а новое время записывает в `startsAt/endsAt`. Эти поля persist в PostgreSQL и возвращаются после reload.
+До подтверждения Никитой frontend должен показывать запрос как `reschedule` и отображать старое время → новое время.
+
+Backend должен вернуть/сохранить данные старого confirmed-времени в `previousStartsAt` и `previousDurationMinutes`, чтобы UI мог показать перенос после reload.
+
+После последующего `POST /booking-slots/:slotId/confirm` старое окно должно стать `available`, а выбранное новое время — `confirmed`.
 
 DTO: `RescheduleBookingSlotDto`.
 
@@ -751,8 +772,7 @@ Request:
 ```json
 {
   "startsAt": "2026-05-18T06:00:00.000Z",
-  "durationMinutes": 90,
-  "instructorComment": "Переносим из-за погоды"
+  "durationMinutes": 90
 }
 ```
 
@@ -766,8 +786,7 @@ Response `201`:
   "startsAt": "2026-05-18T06:00:00.000Z",
   "endsAt": "2026-05-18T07:30:00.000Z",
   "status": "reschedule",
-  "studentId": "student-id",
-  "instructorComment": "Переносим из-за погоды"
+  "studentId": "student-id"
 }
 ```
 
@@ -780,11 +799,7 @@ Checks:
 Frontend example:
 
 ```text
-Было:
-17 мая 17:30
-
-Стало:
-18 мая 09:00
+17 мая 17:30 → 18 мая 09:00
 ```
 
 В UTC это может выглядеть как:
@@ -1723,13 +1738,23 @@ GET /api/booking-slots?studentId=550e8400-e29b-41d4-a716-446655440000
 
 ### Перенос тренировки
 
-**POST /booking-slots/:slotId/reschedule** - инструктор переносит confirmed тренировку
+**POST /booking-slots/:slotId/reschedule** - ученик запрашивает перенос confirmed тренировки на новое время
 
-Поля `previousStartsAt` и `previousDurationMinutes` сохраняют старое время для отображения "Было / Стало".
+До подтверждения:
+
+- slot/request отображается как `reschedule`;
+- frontend показывает старое → новое время через `previousStartsAt` / `previousDurationMinutes`;
+- запрос виден Никите только в “Запросы на перенос”.
+
+После `POST /booking-slots/:slotId/confirm`:
+
+- старое окно становится `available`;
+- новое время становится `confirmed`;
+- у ученика старое время исчезает из активных тренировок;
+- старое окно снова доступно для записи другим ученикам.
 
 ### Ручная запись истории
 
 **POST /students/:studentId/training-history/manual** - когда нет booking slot (тренировка не через систему бронирования)
 
 Позволяет добавить исторические тренировки без связи с booking slot.
-

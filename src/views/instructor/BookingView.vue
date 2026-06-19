@@ -219,11 +219,11 @@ onMounted(() => {
       <div class="form-stack">
         <label>
           Дата
-          <DatePicker v-model="slotForm.dateValue" date-format="dd.mm.yy" show-icon />
+          <DatePicker v-model="slotForm.dateValue" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon />
         </label>
         <label>
           Время
-          <DatePicker v-model="slotForm.timeValue" hour-format="24" show-icon time-only />
+          <DatePicker v-model="slotForm.timeValue" :minDate="new Date(Date.now())" hour-format="24" show-icon time-only />
         </label>
         <label>
           Длительность

@@ -363,7 +363,7 @@ onMounted(() => {
     <Dialog v-model:visible="cancelDialogOpen" :draggable="false" class="moto-dialog" header="Отменить тренировку?" modal>
       <div class="form-stack">
         <p class="status-message">
-          Если отмена происходит в день тренировки, занятие считается использованным и может быть списано из пакета.
+          Если отмена происходит в день тренировки, занятие считается проведенным и может быть списано из пакета.
         </p>
         <div v-if="trainingToCancel" class="booking-summary">
           <span>{{ trainingToCancel.date }} · {{ trainingToCancel.time }}</span>
