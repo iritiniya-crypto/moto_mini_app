@@ -33,11 +33,17 @@ export interface ApiTrainingHistory {
   reportId?: string | null
   trainedAt: string
   summary: string
+  location?: string
+  locationUrl?: string
   videos: TrainingVideo[]
   report?: ApiTrainingReport | null
   bookingSlot?: {
     id: string
     status: BookingSlotStatus
+    finalLocation?: string
+    finalLocationUrl?: string
+    location?: string
+    locationUrl?: string
   } | null
 }
 
@@ -71,6 +77,7 @@ export interface TrainingHistory {
   date: string
   duration: string
   location?: string
+  locationUrl?: string
   theme: string
   topics: string[]
   comment: string

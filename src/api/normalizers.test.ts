@@ -104,4 +104,38 @@ describe('normalizers', () => {
     expect(student.trainingPackage?.completed).toBe(0)
     expect(student.trainingPackage?.total).toBe(3)
   })
+
+  it('normalizes history location without using the booking slot title', () => {
+    const student = normalizeStudent({
+      id: 'student-api-id',
+      name: 'Алексей',
+      level: 'BASIC',
+      trainingHistory: [
+        {
+          id: 'history-1',
+          trainedAt: '2026-06-30T10:00:00.000Z',
+          location: 'Площадка Запад',
+          locationUrl: 'https://maps.example.com/west',
+          bookingSlot: {
+            title: 'Свободный слот',
+            finalLocation: 'Площадка Север',
+          },
+        },
+        {
+          id: 'history-2',
+          trainedAt: '2026-06-25T10:00:00.000Z',
+          bookingSlot: {
+            title: 'Свободный слот',
+            finalLocation: 'Площадка Север',
+          },
+        },
+      ],
+      packages: [],
+    })
+
+    expect(student.trainingHistory?.[0].location).toBe('Площадка Запад')
+    expect(student.trainingHistory?.[0].locationUrl).toBe('https://maps.example.com/west')
+    expect(student.trainingHistory?.[1].location).toBe('Площадка Север')
+    expect(student.trainingHistory?.some((history) => history.location === 'Свободный слот')).toBe(false)
+  })
 })

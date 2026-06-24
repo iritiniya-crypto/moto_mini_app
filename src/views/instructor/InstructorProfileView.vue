@@ -2,7 +2,6 @@
 import {computed, onMounted, ref} from 'vue'
 import {storeToRefs} from 'pinia'
 import CompleteTrainingDialog from '@/components/CompleteTrainingDialog.vue'
-import LessonCard from '@/components/LessonCard.vue'
 import MetricCard from '@/components/MetricCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
@@ -66,6 +65,8 @@ const packageCompleted = ref(selectedStudent.value?.trainingPackage?.completed ?
 const packagePaymentStatus = ref<PaymentStatus>(selectedStudent.value?.trainingPackage?.paymentStatus ?? 'не оплачено')
 const editableSkills = ref<Skill[]>([])
 const selectedStudentHistory = ref<TrainingHistory[]>([])
+const selectedTrainingHistory = ref<TrainingHistory | null>(null)
+const trainingDetailsOpen = ref(false)
 const studentSaveMessage = ref('')
 const trainingToReport = ref<BookingSlot | null>(null)
 const videoTraining = ref<BookingSlot | null>(null)
@@ -135,6 +136,8 @@ onMounted(() => {
 })
 
 async function openStudentCard(nextStudent: Student) {
+  selectedTrainingHistory.value = null
+  trainingDetailsOpen.value = false
   selectedStudent.value = nextStudent
   selectedStudentHistory.value = nextStudent.trainingHistory ?? []
   studentName.value = nextStudent.name
@@ -173,6 +176,11 @@ async function openStudentCard(nextStudent: Student) {
   packageCompleted.value = selectedStudent.value.trainingPackage?.completed ?? 0
   packagePaymentStatus.value = selectedStudent.value.trainingPackage?.paymentStatus ?? 'не оплачено'
   editableSkills.value = (selectedStudent.value.skills || []).map((skill) => ({ ...skill }))
+}
+
+function openTrainingDetails(history: TrainingHistory) {
+  selectedTrainingHistory.value = history
+  trainingDetailsOpen.value = true
 }
 
 function formatStudentDate(value?: string) {
@@ -612,12 +620,21 @@ function removeSkill(id: number) {
         </label>
 
         <SectionHeader title="История тренировок" />
-        <div v-if="selectedStudentHistory.length > 0">
-          <LessonCard
+        <div v-if="selectedStudentHistory.length > 0" class="training-select-list">
+          <button
             v-for="history in selectedStudentHistory"
             :key="history.id"
-            :lesson="history"
-          />
+            class="training-select-card"
+            type="button"
+            @click="openTrainingDetails(history)"
+          >
+            <div class="lesson-head">
+              <span>
+                {{ history.date }} · {{ history.duration }} · {{ history.location || 'Локация не указана' }}
+              </span>
+              <Tag severity="success" value="завершено" />
+            </div>
+          </button>
         </div>
         <div v-else class="text-gray-400 text-sm">
           Тренировок еще нет
@@ -640,6 +657,62 @@ function removeSkill(id: number) {
             <Button icon="pi pi-trash" severity="secondary" size="small" @click="removeSkill(skill.id)" />
           </label>
         </div>
+      </div>
+    </Dialog>
+
+    <Dialog
+      v-if="selectedTrainingHistory"
+      v-model:visible="trainingDetailsOpen"
+      :draggable="false"
+      class="moto-dialog"
+      :header="`Тренировка ${selectedTrainingHistory.date}`"
+      modal
+    >
+      <div class="form-stack">
+        <div class="note-list">
+          <div>
+            <span>Дата</span>
+            <strong>{{ selectedTrainingHistory.date }}</strong>
+          </div>
+          <div>
+            <span>Длительность</span>
+            <strong>{{ selectedTrainingHistory.duration }}</strong>
+          </div>
+          <div>
+            <span>Локация</span>
+            <strong>{{ selectedTrainingHistory.location || 'Локация не указана' }}</strong>
+          </div>
+          <div>
+            <span>Что тренировали</span>
+            <strong>{{ selectedTrainingHistory.topics.join(', ') || selectedTrainingHistory.theme }}</strong>
+          </div>
+          <div>
+            <span>Что получилось</span>
+            <strong>{{ selectedTrainingHistory.improved || 'Не указано' }}</strong>
+          </div>
+          <div>
+            <span>На что обратить внимание</span>
+            <strong>{{ selectedTrainingHistory.nextFocus || 'Не указано' }}</strong>
+          </div>
+        </div>
+        <a
+          v-if="selectedTrainingHistory.locationUrl"
+          :href="selectedTrainingHistory.locationUrl"
+          class="location-link"
+          rel="noreferrer"
+          target="_blank"
+        >
+          Открыть локацию
+        </a>
+        <a
+          v-if="selectedTrainingHistory.videoUrl"
+          :href="selectedTrainingHistory.videoUrl"
+          class="location-link"
+          rel="noreferrer"
+          target="_blank"
+        >
+          Открыть видео в Telegram
+        </a>
       </div>
     </Dialog>
 
