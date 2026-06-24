@@ -329,12 +329,15 @@ export function useBookingStore() {
 
   async function rescheduleSlot(
     id: number,
-    nextTime: Pick<BookingSlot, 'date' | 'time' | 'duration'>,
+    targetSlot: BookingSlot,
     studentComment?: string,
   ) {
+    bookingError.value = ''
     const slot = slots.value.find((item) => item.id === id)
     const patch: Partial<BookingSlot> = {
-      ...nextTime,
+      date: targetSlot?.date,
+      time: targetSlot?.time,
+      duration: targetSlot?.duration,
       status: 'reschedule',
       previousDate: slot?.date,
       previousTime: slot?.time,
@@ -343,14 +346,19 @@ export function useBookingStore() {
     }
 
     try {
-      if (!slot?.apiId) {
-        throw new Error('Slot has no backend id')
+      if (!slot?.apiId || !targetSlot?.apiId || targetSlot.status !== 'available') {
+        throw new Error('Reschedule slots have no backend ids')
       }
 
-      const response = await rescheduleBookingSlot(slot.apiId, slotToCreatePayload({ ...slot, ...nextTime }))
+      const response = await rescheduleBookingSlot(slot.apiId, {
+        targetSlotId: targetSlot.apiId,
+        ...slotToCreatePayload(targetSlot),
+      })
       return upsertSlotsFromResponse(response, { ...slot, ...patch })
     } catch {
-      bookingError.value = slot?.apiId ? 'Backend недоступен, перенос не был сохранен.' : bookingError.value
+      bookingError.value = slot?.apiId
+        ? 'Не удалось перенести тренировку. Попробуйте еще раз.'
+        : 'Не удалось определить выбранную тренировку.'
       return undefined
     }
   }

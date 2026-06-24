@@ -101,9 +101,9 @@ export interface ConfirmBookingSlotRequest {
 }
 
 export interface RescheduleBookingSlotRequest {
+  targetSlotId: string
   startsAt: string
   durationMinutes: number
-  instructorComment?: string
 }
 
 export interface CancelBookingSlotRequest {

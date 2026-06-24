@@ -355,7 +355,7 @@ onMounted(async () => {
             <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
               <div style="display: flex; gap: 2rem;">
                 <div style="display: flex; align-items: center; justify-content: center">
-                  <Avatar image="student-avatar.png" shape="circle" size="large" style="width: 100px; height: 100px;"/>
+                  <Avatar class="student-request-avatar" image="student-avatar.png" shape="circle" size="large" />
                 </div>
                 <div style="display: flex; gap: 1rem; flex-direction: column; align-items: flex-end; justify-content: flex-start">
                   <h3>{{ request.student }}</h3>
@@ -396,7 +396,7 @@ onMounted(async () => {
         <Card v-for="move in reschedules" :key="move.id" class="request-card">
           <template #content>
             <div class="request-top">
-              <Avatar image="student-avatar.png" shape="circle" />
+              <Avatar class="student-request-avatar" image="student-avatar.png" shape="circle" size="large" />
               <div>
                 <h3>{{ move.student }}</h3>
                 <span>{{ rescheduleTimeText(move) }} · {{ durationText(move.duration) }}</span>

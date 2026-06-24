@@ -6,7 +6,7 @@ import {useBookingStore} from '@/composables/useBookingStore.ts'
 import type {BookingSlot} from '@/types/booking'
 
 const currentStudentId = TEST_USER_ID
-const { activeStudentSlot, cancelSlot, loadStudentBookingSlots, requestSlot, rescheduleSlot, availableSlots, slots } = useBookingStore()
+const { activeStudentSlot, bookingError, cancelSlot, loadStudentBookingSlots, requestSlot, rescheduleSlot, availableSlots, slots } = useBookingStore()
 const selectedSlotId = ref<number | null>(null)
 const moving = ref(false)
 const bookingDialogOpen = ref(false)
@@ -101,15 +101,14 @@ async function submitBooking() {
   const slot = candidateSlot.value
   if (moving.value && selectedSlot.value?.status === 'confirmed') {
     selectedSlotId.value = selectedSlot.value.id
-    await rescheduleSlot(
+    const result = await rescheduleSlot(
       selectedSlot.value.id,
-      {
-        date: slot.date,
-        time: slot.time,
-        duration: slot.duration,
-      },
+      slot,
       bookingForm.value.studentComment,
     )
+    if (!result) {
+      return
+    }
   } else {
     selectedSlotId.value = slot.id
     await requestSlot(
@@ -297,6 +296,7 @@ onMounted(() => {
           </template>
         </Card>
       </div>
+      <p v-if="bookingError" class="status-message">{{ bookingError }}</p>
     </section>
 
     <Card v-if="selectedSlot && (selectedSlot.status === 'requested' || selectedSlot.status === 'reschedule')" class="flow-card">
@@ -359,6 +359,7 @@ onMounted(() => {
             rows="3"
           />
         </label>
+        <p v-if="bookingError" class="status-message">{{ bookingError }}</p>
         <Button icon="pi pi-send" label="Отправить запрос" @click="submitBooking" />
       </div>
     </Dialog>

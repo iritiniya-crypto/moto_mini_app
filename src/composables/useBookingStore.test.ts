@@ -22,7 +22,10 @@ vi.mock('../api/bookingSlots', () => ({
   requestBookingSlot: vi.fn(),
   rescheduleBookingSlot: vi.fn(),
   slotPatchToPayload: vi.fn((payload: any) => payload),
-  slotToCreatePayload: vi.fn((payload: any) => payload),
+  slotToCreatePayload: vi.fn(() => ({
+    startsAt: '2026-06-12T05:00:00.000Z',
+    durationMinutes: 90,
+  })),
   updateBookingSlot: vi.fn(),
 }))
 
@@ -31,6 +34,7 @@ import {
   deleteBookingSlot,
   fetchAllBookingSlots,
   requestBookingSlot,
+  rescheduleBookingSlot,
 } from '../api/bookingSlots'
 
 const baseSlot = {
@@ -87,6 +91,33 @@ describe('useBookingStore', () => {
     expect(store.slots.value[0].status).toBe('requested')
   })
 
+  it('reschedules to the selected available slot by backend id', async () => {
+    const confirmedSlot = { ...baseSlot, status: 'confirmed' as const }
+    const targetSlot = {
+      id: 202,
+      apiId: 'slot-202',
+      date: '12 июня',
+      time: '12:00',
+      duration: '90 мин',
+      status: 'available' as const,
+    }
+    vi.mocked(rescheduleBookingSlot).mockResolvedValueOnce({
+      ...targetSlot,
+      status: 'reschedule',
+    } as any)
+
+    const store = useBookingStore()
+    store.slots.value = [confirmedSlot, targetSlot] as any
+
+    await store.rescheduleSlot(confirmedSlot.id, targetSlot)
+
+    expect(rescheduleBookingSlot).toHaveBeenCalledWith('slot-101', {
+      targetSlotId: 'slot-202',
+      startsAt: expect.any(String),
+      durationMinutes: 90,
+    })
+  })
+
   it('does not remove slot when removeSlot backend call fails', async () => {
     vi.mocked(deleteBookingSlot).mockRejectedValueOnce(new Error('down'))
 
@@ -110,4 +141,3 @@ describe('useBookingStore', () => {
     expect(store.slots.value).toHaveLength(0)
   })
 })
-

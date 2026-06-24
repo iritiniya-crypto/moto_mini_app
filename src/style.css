@@ -1088,6 +1088,19 @@ p {
   flex: 1;
 }
 
+.student-request-avatar {
+  width: 100px;
+  height: 100px;
+  flex: 0 0 100px;
+  overflow: hidden;
+}
+
+.student-request-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .request-card small {
   display: block;
   margin-top: 5px;

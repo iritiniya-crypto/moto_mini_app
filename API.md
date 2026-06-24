@@ -771,6 +771,7 @@ Request:
 
 ```json
 {
+  "targetSlotId": "target-slot-id",
   "startsAt": "2026-05-18T06:00:00.000Z",
   "durationMinutes": 90
 }
@@ -1222,9 +1223,9 @@ Checks:
 
 ```ts
 {
+  targetSlotId: string;
   startsAt: string;
   durationMinutes: number;
-  instructorComment?: string;
 }
 ```
 
@@ -1296,9 +1297,9 @@ Checks:
 
 ### RescheduleBookingSlotDto
 
+- `targetSlotId`: UUID свободного booking slot, required
 - `startsAt`: ISO date string, required
 - `durationMinutes`: integer, required, min 15, max 600
-- `instructorComment`: string, optional
 
 ### CancelBookingSlotDto
 
