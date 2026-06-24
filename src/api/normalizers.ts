@@ -256,6 +256,19 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
   const skills = normalizeSkills(pick(source, 'skills'))
   const history = normalizeHistory(pick(source, 'trainingHistory', 'training_history', 'history'))
   const instructor = pick<ApiRecord>(source, 'instructor')
+  const backendHistoryCount = pick(
+    source,
+    'completedTrainingsCount',
+    'completed_trainings_count',
+    'historyCount',
+    'history_count',
+    'totalTrainings',
+    'total_trainings',
+  )
+  const parsedHistoryCount = Number(backendHistoryCount)
+  const completedTrainingsCount = backendHistoryCount !== undefined && Number.isFinite(parsedHistoryCount)
+    ? parsedHistoryCount
+    : history.length || fallback?.completedTrainingsCount || 0
 
   return {
     id: pick(source, 'id') || '',
@@ -265,7 +278,7 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
     name: String(pick(source, 'name') ?? pick<ApiRecord>(source, 'user')?.displayName ?? fallback?.name ?? 'Ученик'),
     status: String(pick(source, 'status') ?? fallback?.status ?? 'активный'),
     level: levelFromApi(pick(source, 'level'), fallback?.level),
-    completedTrainingsCount: history.length || fallback?.completedTrainingsCount || 0,
+    completedTrainingsCount,
     nextLesson: fallback?.nextLesson ?? 'Время еще не выбрано',
     avatar: fallback?.avatar ?? '',
     focus: String(pick(source, 'nextTrainingPlan', 'next_training_plan', 'focus', 'notes') ?? fallback?.focus ?? ''),

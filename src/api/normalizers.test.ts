@@ -89,5 +89,19 @@ describe('normalizers', () => {
     expect(student.createdAt).toBe('2026-06-01T10:00:00.000Z')
     expect(student.skills?.[0].name).toBe('Овал')
   })
-})
 
+  it('uses backend history count when the student list has no full history', () => {
+    const student = normalizeStudent({
+      id: 'student-api-id',
+      name: 'Алексей',
+      level: 'BASIC',
+      historyCount: 7,
+      trainingHistory: [],
+      packages: [{ totalTrainings: 3, completedTrainings: 0, paymentStatus: 'paid' }],
+    })
+
+    expect(student.completedTrainingsCount).toBe(7)
+    expect(student.trainingPackage?.completed).toBe(0)
+    expect(student.trainingPackage?.total).toBe(3)
+  })
+})

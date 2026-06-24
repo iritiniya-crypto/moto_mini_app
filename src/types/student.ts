@@ -19,6 +19,9 @@ export interface ApiStudent {
   user: User
   packages: ApiTrainingPackage[]
   skills: StudentSkill[]
+  historyCount?: number
+  completedTrainingsCount?: number
+  totalTrainings?: number
 }
 
 export interface ApiStudentProfile extends ApiStudent {

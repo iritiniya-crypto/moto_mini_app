@@ -2,6 +2,7 @@ import {defineStore} from 'pinia'
 import {ref} from 'vue'
 import {fetchStudentPackage, normalizeTrainingPackage, packageToPayload, upsertStudentPackage} from '@/api/packages'
 import {fetchStudentSkills, normalizeSkillDefinitions, skillsToPayload, updateStudentSkillsApi} from '@/api/skills'
+import {fetchStudentProfile, normalizeStudentProfile} from '@/api/studentProfile'
 import {
   createStudent,
   fetchStudents,
@@ -102,6 +103,24 @@ export const useStudentsStore = defineStore('students', () => {
     }
   }
 
+  async function loadStudentProfile(student: Student) {
+    if (!student.apiId) {
+      return student
+    }
+
+    try {
+      const payload = await fetchStudentProfile(student.apiId)
+      const profile = normalizeStudentProfile(payload)
+      replaceStudent(student.id, profile)
+      usingFallback.value = false
+      return profile
+    } catch {
+      usingFallback.value = true
+      error.value = 'Backend profile недоступен, показываем данные из списка учеников.'
+      return student
+    }
+  }
+
   async function saveStudentPackage(student: Student, trainingPackage: NonNullable<Student['trainingPackage']>) {
     try {
       if (!student.apiId) {
@@ -165,6 +184,7 @@ export const useStudentsStore = defineStore('students', () => {
     isSaving,
     loadStudents,
     loadStudentPackage,
+    loadStudentProfile,
     loadStudentSkills,
     saveStudentPackage,
     saveStudentSkills,

@@ -24,9 +24,15 @@ vi.mock('../api/skills', () => ({
   updateStudentSkillsApi: vi.fn(),
 }))
 
+vi.mock('../api/studentProfile', () => ({
+  fetchStudentProfile: vi.fn(),
+  normalizeStudentProfile: vi.fn((payload: any) => payload),
+}))
+
 import { createStudent, fetchStudents, updateStudent } from '../api/students'
 import { upsertStudentPackage } from '../api/packages'
 import { updateStudentSkillsApi } from '../api/skills'
+import { fetchStudentProfile } from '../api/studentProfile'
 
 const sampleStudent = {
   id: 'student-1',
@@ -66,6 +72,24 @@ describe('studentsStore', () => {
     expect(store.students).toEqual([])
     expect(store.usingFallback).toBe(true)
     expect(store.error).toContain('не удалось загрузить')
+  })
+
+  it('replaces a list item with the full backend profile', async () => {
+    const history = [{ id: 1, date: '10 июня' }]
+    vi.mocked(fetchStudentProfile).mockResolvedValueOnce({
+      ...sampleStudent,
+      completedTrainingsCount: 7,
+      trainingHistory: history,
+    } as any)
+
+    const store = useStudentsStore()
+    store.students = [{ ...sampleStudent } as any]
+
+    const profile = await store.loadStudentProfile(store.students[0])
+
+    expect(fetchStudentProfile).toHaveBeenCalledWith('student-api-1')
+    expect(profile.completedTrainingsCount).toBe(7)
+    expect(store.students[0].trainingHistory).toEqual(history)
   })
 
   it('does not mutate student locally when update fails', async () => {
@@ -122,4 +146,3 @@ describe('studentsStore', () => {
     expect(store.students).toHaveLength(1)
   })
 })
-

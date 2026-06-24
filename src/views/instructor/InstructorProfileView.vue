@@ -135,9 +135,8 @@ onMounted(() => {
 })
 
 async function openStudentCard(nextStudent: Student) {
-  const localStudent = await updateStudent(nextStudent.id, nextStudent)
   selectedStudent.value = nextStudent
-  selectedStudentHistory.value = localStudent?.trainingHistory ?? nextStudent.trainingHistory ?? []
+  selectedStudentHistory.value = nextStudent.trainingHistory ?? []
   studentName.value = nextStudent.name
   level.value = nextStudent.level
   packageTotal.value = nextStudent.trainingPackage?.total ?? 0
@@ -148,9 +147,16 @@ async function openStudentCard(nextStudent: Student) {
   studentSaveMessage.value = ''
   studentDialogOpen.value = true
 
+  const profileStudent = await studentsStore.loadStudentProfile(nextStudent)
+  selectedStudent.value = profileStudent
+  selectedStudentHistory.value = profileStudent.trainingHistory ?? []
+  studentName.value = profileStudent.name
+  level.value = profileStudent.level
+  trainingPlan.value = profileStudent.focus || ''
+
   const [apiPackage, apiSkills] = await Promise.all([
-    studentsStore.loadStudentPackage(nextStudent),
-    studentsStore.loadStudentSkills(nextStudent),
+    studentsStore.loadStudentPackage(profileStudent),
+    studentsStore.loadStudentSkills(profileStudent),
   ])
 
   const currentStudent = selectedStudent.value
@@ -163,7 +169,6 @@ async function openStudentCard(nextStudent: Student) {
     trainingPackage: apiPackage ?? currentStudent.trainingPackage,
     skills: apiSkills ?? currentStudent.skills,
   }
-  await updateStudent(selectedStudent.value.id, selectedStudent.value)
   packageTotal.value = selectedStudent.value.trainingPackage?.total ?? 0
   packageCompleted.value = selectedStudent.value.trainingPackage?.completed ?? 0
   packagePaymentStatus.value = selectedStudent.value.trainingPackage?.paymentStatus ?? 'не оплачено'
