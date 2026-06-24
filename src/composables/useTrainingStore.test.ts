@@ -39,6 +39,7 @@ import { createTrainingReportApi } from '../api/trainingReports'
 import { createManualTrainingHistory } from '../api/trainingHistory'
 import { upsertStudentPackage } from '../api/packages'
 import { updateStudentSkillsApi } from '../api/skills'
+import { createTrainingVideo } from '../api/videos'
 
 const student = {
   id: 'student-1',
@@ -144,6 +145,37 @@ describe('useTrainingStore', () => {
     expect(userStoreState.profile.trainingHistory).toHaveLength(1)
   })
 
+  it('adds video by training history id and refreshes the profile', async () => {
+    vi.mocked(createTrainingVideo).mockResolvedValueOnce({ id: 'video-api-1' } as any)
+
+    const store = useTrainingStore()
+    const saved = await store.addTrainingVideo(
+      'student-1',
+      {
+        slotId: 101,
+        date: '10 июня',
+        duration: '90 мин',
+        location: 'Площадка',
+        theme: 'Овал',
+        topics: ['Овал'],
+      },
+      {
+        title: 'Видео тренировки',
+        url: 'https://t.me/example/1',
+        comment: 'Прогресс',
+      },
+      'history-api-1',
+    )
+
+    expect(createTrainingVideo).toHaveBeenCalledWith('history-api-1', {
+      title: 'Видео тренировки',
+      telegramUrl: 'https://t.me/example/1',
+      comment: 'Прогресс',
+    })
+    expect(userStoreState.loadProfile).toHaveBeenCalledWith('student-1')
+    expect(saved).toBe(true)
+  })
+
   it('returns null and keeps previous package when backend package save fails', async () => {
     userStoreState.profile.trainingPackage = { total: 3, completed: 1, paymentStatus: 'не оплачено' }
     vi.mocked(upsertStudentPackage).mockRejectedValueOnce(new Error('down'))
@@ -175,4 +207,3 @@ describe('useTrainingStore', () => {
     expect(userStoreState.profile.skills[0].oldValue).toBe(90)
   })
 })
-

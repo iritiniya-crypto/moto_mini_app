@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {computed, onMounted, ref} from 'vue'
+import {computed, nextTick, onMounted, ref} from 'vue'
 import {storeToRefs} from 'pinia'
 import CompleteTrainingDialog from '@/components/CompleteTrainingDialog.vue'
 import MetricCard from '@/components/MetricCard.vue'
@@ -36,7 +36,6 @@ const { slots } = useBookingStore()
 const {
   addManualTraining,
   addTrainingVideo,
-  getStudentTrainingHistory,
   updateStudent,
   updateStudentSkills,
 } = useTrainingStore()
@@ -69,7 +68,8 @@ const selectedTrainingHistory = ref<TrainingHistory | null>(null)
 const trainingDetailsOpen = ref(false)
 const studentSaveMessage = ref('')
 const trainingToReport = ref<BookingSlot | null>(null)
-const videoTraining = ref<BookingSlot | null>(null)
+const selectedVideoHistory = ref<TrainingHistory | null>(null)
+const videoFormSection = ref<HTMLElement | null>(null)
 const videoForm = ref({
   title: '',
   url: '',
@@ -124,9 +124,17 @@ const selectedStudentSlots = computed(() =>
 const selectedStudentReportSlots = computed(() =>
   selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed'),
 )
-const selectedStudentVideoSlots = computed(() =>
-  selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed' || slot.status === 'completed'),
+const videoTrainingHistory = computed(() =>
+  selectedStudentHistory.value.filter((history) => Boolean(history.apiId)),
 )
+const isVideoUrlValid = computed(() => {
+  try {
+    const url = new URL(videoForm.value.url.trim())
+    return ['t.me', 'telegram.me'].includes(url.hostname) && ['http:', 'https:'].includes(url.protocol)
+  } catch {
+    return false
+  }
+})
 
 onMounted(() => {
   userStore.checkHealth()
@@ -382,52 +390,50 @@ async function saveManualTraining() {
 }
 
 function openVideoDialog() {
-  videoTraining.value = null
+  selectedVideoHistory.value = null
   videoForm.value = { title: '', url: '', comment: '' }
   videoOpen.value = true
 }
 
-function selectTrainingForVideo(slot: BookingSlot) {
-  videoTraining.value = slot
+async function selectTrainingForVideo(history: TrainingHistory) {
+  selectedVideoHistory.value = history
   videoForm.value = {
     title: '',
     url: '',
     comment: '',
   }
+  await nextTick()
+  videoFormSection.value?.scrollIntoView({behavior: 'smooth', block: 'start'})
 }
 
 async function saveTrainingVideo() {
   const currentStudent = selectedStudent.value
+  const history = selectedVideoHistory.value
 
-  if (!currentStudent || !videoTraining.value || !videoForm.value.url.trim()) {
+  if (!currentStudent || !history?.apiId || !isVideoUrlValid.value) {
     return
   }
 
-  const history = selectedStudentHistory.value.find((item) => item.slotId === videoTraining.value?.id)
-
-  await addTrainingVideo(
+  const saved = await addTrainingVideo(
     currentStudent.id,
-    {
-      slotId: videoTraining.value.id,
-      date: videoTraining.value.date,
-      duration: videoTraining.value.duration,
-      location: videoTraining.value.finalLocation,
-      theme: history?.theme || 'Видео тренировки',
-      topics: history?.topics || [],
-    },
+    history,
     {
       title: videoForm.value.title.trim() || 'Видео тренировки',
       url: videoForm.value.url.trim(),
       comment: videoForm.value.comment.trim(),
     },
-    history?.apiId,
+    history.apiId,
   )
 
-  selectedStudentHistory.value = await getStudentTrainingHistory(currentStudent.id)
-  selectedStudent.value = {
-    ...currentStudent,
-    trainingHistory: selectedStudentHistory.value,
+  if (!saved) {
+    return
   }
+
+  const refreshedStudent = await studentsStore.loadStudentProfile(currentStudent)
+  selectedStudent.value = refreshedStudent
+  selectedStudentHistory.value = refreshedStudent.trainingHistory ?? []
+  selectedVideoHistory.value = null
+  videoForm.value = { title: '', url: '', comment: '' }
   videoOpen.value = false
 }
 
@@ -797,22 +803,23 @@ function removeSkill(id: number) {
 
     <Dialog v-model:visible="videoOpen" :draggable="false" class="moto-dialog" header="Добавить видео к тренировке" modal>
       <div class="form-stack">
-        <div v-if="selectedStudentVideoSlots.length > 0" class="training-select-list">
+        <div v-if="videoTrainingHistory.length > 0" class="training-select-list">
           <button
-            v-for="slot in selectedStudentVideoSlots"
-            :key="slot.id"
-            :class="['training-select-card', { active: videoTraining?.id === slot.id }]"
+            v-for="history in videoTrainingHistory"
+            :key="history.id"
+            :class="['training-select-card', { active: selectedVideoHistory?.id === history.id }]"
             type="button"
-            @click="selectTrainingForVideo(slot)"
+            @click="selectTrainingForVideo(history)"
           >
-            <span>{{ slot.date }} · {{ slot.time }} · {{ durationText(slot.duration) }}</span>
-            <strong>{{ slot.finalLocation || 'Локация не указана' }}</strong>
-            <Tag :value="statusLabel(slot.status)" />
+            <span>{{ history.date }} · {{ durationText(history.duration) }}</span>
+            <strong>{{ history.location || 'Локация не указана' }}</strong>
+            <Tag value="Проведено" />
           </button>
         </div>
         <p v-else class="status-message">У ученика пока нет тренировок, к которым можно прикрепить видео.</p>
 
-        <template v-if="videoTraining">
+        <div v-if="selectedVideoHistory" ref="videoFormSection" class="form-stack">
+          <strong>Видео для тренировки {{ selectedVideoHistory.date }}</strong>
           <label>
             Ссылка на Telegram-видео
             <InputText v-model="videoForm.url" placeholder="https://t.me/..." />
@@ -825,8 +832,8 @@ function removeSkill(id: number) {
             Короткий комментарий
             <Textarea v-model="videoForm.comment" auto-resize rows="3" />
           </label>
-          <Button :disabled="!videoForm.url.trim()" icon="pi pi-check" label="Сохранить видео" @click="saveTrainingVideo" />
-        </template>
+          <Button :disabled="!isVideoUrlValid" icon="pi pi-check" label="Сохранить видео" @click="saveTrainingVideo" />
+        </div>
       </div>
     </Dialog>
   </section>

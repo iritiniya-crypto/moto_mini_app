@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {computed, onMounted, ref} from 'vue'
+import {computed, nextTick, onMounted, ref} from 'vue'
 import {TEST_USER_ID} from '@/api/client.ts'
 import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
@@ -13,6 +13,7 @@ const bookingDialogOpen = ref(false)
 const candidateSlot = ref<BookingSlot | null>(null)
 const cancelDialogOpen = ref(false)
 const trainingToCancel = ref<BookingSlot | null>(null)
+const availableSlotsSection = ref<HTMLElement | null>(null)
 const preferenceOptions = ['Площадка Запад', 'Серпантин', 'Город', 'Не знаю / нужна консультация']
 const bookingForm = ref({
   preference: 'Не знаю / нужна консультация',
@@ -125,9 +126,11 @@ async function submitBooking() {
   bookingDialogOpen.value = false
 }
 
-function startMove(slot: BookingSlot) {
+async function startMove(slot: BookingSlot) {
   selectedSlotId.value = slot.id
   moving.value = true
+  await nextTick()
+  availableSlotsSection.value?.scrollIntoView({behavior: 'smooth', block: 'start'})
 }
 
 function openCancelDialog(slot: BookingSlot) {
@@ -265,7 +268,7 @@ onMounted(() => {
       <p v-else class="status-message">Активных тренировок пока нет.</p>
     </section>
 
-    <section>
+    <section ref="availableSlotsSection">
       <SectionHeader :title="moving ? 'Выберите новое время' : 'Свободное время'" />
       <Card class="hero-card booking-copy">
         <template #content>

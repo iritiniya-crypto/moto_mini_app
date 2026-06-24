@@ -150,7 +150,7 @@ export function useTrainingStore() {
     void training
     const userStore = useUserStore()
     if (!historyApiId) {
-      return
+      return false
     }
 
     try {
@@ -160,8 +160,9 @@ export function useTrainingStore() {
         comment: video.comment,
       })
       await userStore.loadProfile(studentId)
+      return true
     } catch {
-      // Keep the last backend-confirmed state.
+      return false
     }
   }
 
