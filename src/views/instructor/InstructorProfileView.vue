@@ -76,7 +76,7 @@ const videoForm = ref({
 })
 const paymentStatusOptions: PaymentStatus[] = ['оплачено', 'не оплачено', 'частично оплачено']
 const manualTrainingForm = ref({
-  date: '',
+  date: null as Date | null,
   duration: '90 мин',
   location: '',
   trained: '',
@@ -288,7 +288,7 @@ function handleTrainingReportCompleted() {
 
 function openManualTrainingDialog() {
   manualTrainingForm.value = {
-    date: '',
+    date: null,
     duration: '90 мин',
     location: '',
     trained: '',
@@ -305,13 +305,19 @@ const isManualTrainingValid = computed(() => {
   const form = manualTrainingForm.value
 
   return Boolean(
-    form.date.trim() &&
+    form.date &&
       form.duration.trim() &&
       form.trained.trim() &&
       form.improved.trim() &&
       form.nextFocus.trim(),
   )
 })
+
+function formatManualTrainingDate(value: Date) {
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
+    .format(value)
+    .replace(' г.', '')
+}
 
 async function saveManualTraining() {
   manualTrainingMessage.value = ''
@@ -340,7 +346,7 @@ async function saveManualTraining() {
     .filter(Boolean)
 
   const history = await addManualTraining(currentStudent.id, {
-    date: form.date.trim(),
+    date: formatManualTrainingDate(form.date!),
     duration: form.duration,
     location: form.location.trim() || undefined,
     topics,
@@ -675,7 +681,7 @@ function removeSkill(id: number) {
       <div class="form-stack">
         <label>
           Дата
-          <InputText v-model="manualTrainingForm.date" placeholder="Например, 22 июня" />
+          <DatePicker v-model="manualTrainingForm.date" date-format="dd.mm.yy" show-icon />
         </label>
         <label>
           Длительность
