@@ -4,13 +4,15 @@ import {TEST_USER_ID} from '@/api/client.ts'
 import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
 import type {BookingSlot} from '@/types/booking'
+import { useUserStore } from '@/stores/userStore'
 
 const props = defineProps<{
   role: 'student' | 'instructor'
 }>()
 
 const { addSlot, bookingManagementSlots, loadAllBookingSlots, removeSlot, requestSlot, updateSlot, availableSlots, slots } = useBookingStore()
-const currentStudentId = TEST_USER_ID
+const userStore = useUserStore()
+const currentStudentId = userStore.profile?.apiId || TEST_USER_ID
 const slotDialogOpen = ref(false)
 const editingSlotId = ref<number | null>(null)
 const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
@@ -136,7 +138,7 @@ async function saveSlot() {
 }
 
 async function bookSlot(slot: BookingSlot) {
-  await requestSlot(slot.id, currentStudentId, 'Не знаю / нужна консультация', '', 'requested', TEST_USER_ID)
+  await requestSlot(slot.id, 'Не знаю / нужна консультация', '', 'requested', currentStudentId)
   await loadAllBookingSlots()
   bookedSlotId.value = slot.id
 }

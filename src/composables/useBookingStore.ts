@@ -262,7 +262,6 @@ export function useBookingStore() {
 
   async function requestSlot(
     id: number,
-    studentId: string,
     preference: string,
     studentComment: string,
     status: BookingSlot['status'] = 'requested',
@@ -270,7 +269,6 @@ export function useBookingStore() {
   ) {
     const slot = slots.value.find((item) => item.id === id)
     const patch: Partial<BookingSlot> = {
-      studentId,
       preference,
       studentComment,
       status,
@@ -285,7 +283,7 @@ export function useBookingStore() {
       }
 
       const response = await requestBookingSlot(slot.apiId, {
-        studentId: studentApiId || TEST_USER_ID || String(studentId),
+        studentId: studentApiId || TEST_USER_ID,
         preference,
         studentComment,
       })

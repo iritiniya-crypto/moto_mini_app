@@ -2,19 +2,18 @@
 import {computed, ref, watch} from 'vue'
 import {useBookingStore} from '@/composables/useBookingStore'
 import {useTrainingStore} from '@/composables/useTrainingStore'
+import {useStudentsStore} from '@/stores/studentsStore'
 import {useUserStore} from '@/stores/userStore'
 import type {BookingSlot, Skill} from '@/types'
-import type {Student} from '@/types/student'
 
 interface Props {
   open: boolean
   slot: BookingSlot | null
-  student: Student | null
 }
 
 interface Emits {
   (e: 'update:open', value: boolean): void
-  (e: 'completed'): void
+  (e: 'completed', skills?: Skill[]): void
 }
 
 const props = defineProps<Props>()
@@ -22,7 +21,9 @@ const emit = defineEmits<Emits>()
 
 const { completeSlot, loadInstructorCalendar } = useBookingStore()
 const { createTrainingReport } = useTrainingStore()
+const studentsStore = useStudentsStore()
 const userStore = useUserStore()
+const currentStudent = computed(() => userStore.profile || null)
 
 const selectedSkills = ref<Skill[]>([])
 const skillImprovements = ref<Record<string, string>>({})
@@ -34,14 +35,14 @@ const isSaving = ref(false)
 const levelOptions = ['Новичок', 'База', 'Средний', 'Профи']
 
 watch(
-  () => [props.open, props.student],
+  () => [props.open, currentStudent.value],
   () => {
-    if (props.open && props.student) {
+    if (props.open && currentStudent.value) {
       selectedSkills.value = []
       skillImprovements.value = {}
       improved.value = ''
       nextFocus.value = ''
-      levelUpdate.value = props.student.level || null
+      levelUpdate.value = currentStudent.value.level || null
       isSaving.value = false
     }
   },
@@ -69,8 +70,8 @@ const dialogVisible = computed({
 })
 
 const availableSkills = computed(() => {
-  if (props.student?.skills?.length) {
-    return props.student.skills
+  if (currentStudent.value?.skills?.length) {
+    return currentStudent.value.skills
   }
 
   return userStore.skills
@@ -86,8 +87,42 @@ function initializeSkillImprovements() {
   skillImprovements.value = { ...skillImprovements.value, ...improvements }
 }
 
+function buildUpdatedStudentSkills() {
+  const currentSkills = currentStudent.value?.skills || []
+  const selectedById = new Map(selectedSkills.value.map((skill) => [skill.id, skill]))
+
+  return currentSkills.map((skill) => {
+    const selectedSkill = selectedById.get(skill.id)
+
+    if (!selectedSkill) {
+      return { ...skill }
+    }
+
+    const progressPercent = Number(selectedSkill.newValue ?? selectedSkill.oldValue)
+
+    return {
+      ...skill,
+      oldValue: Math.min(100, Math.max(0, Number.isFinite(progressPercent) ? progressPercent : skill.oldValue)),
+    }
+  })
+}
+
+function syncLoadedProfileSkills(skills: Skill[]) {
+  if (!currentStudent.value || !userStore.profile) {
+    return
+  }
+
+  const sameStudent =
+    userStore.profile.id === currentStudent.value.id ||
+    (currentStudent.value.apiId && userStore.profile.apiId === currentStudent.value.apiId)
+
+  if (sameStudent) {
+    userStore.profile.skills = skills
+  }
+}
+
 async function saveReport() {
-  if (!props.slot || !props.student || !isFormValid.value || isSaving.value) return
+  if (!props.slot || !currentStudent.value || !isFormValid.value || isSaving.value) return
 
   isSaving.value = true
 
@@ -96,7 +131,7 @@ async function saveReport() {
   try {
     const report = await createTrainingReport(
       {
-        studentId: props.student.id,
+        studentId: currentStudent.value.id,
         slotId: props.slot.id,
         date: props.slot.date,
         duration: props.slot.duration,
@@ -104,17 +139,27 @@ async function saveReport() {
         trainedSkills: selectedSkills.value.map((s) => s.name),
         improved: improved.value.trim(),
         nextFocus: nextFocus.value.trim(),
-        skillUpdates: { ...skillImprovements.value },
-        levelUpdate: levelUpdate.value && levelUpdate.value !== props.student.level ? levelUpdate.value : undefined,
+        skillUpdates: Object.fromEntries(
+          selectedSkills.value.map((skill) => [
+            skill.id,
+            String(skill.newValue ?? skill.oldValue),
+          ]),
+        ),
+        levelUpdate: levelUpdate.value && levelUpdate.value !== currentStudent.value.level ? levelUpdate.value : undefined,
       },
       {
         slotApiId: props.slot.apiId,
-        studentApiId: props.student.apiId,
+        studentApiId: currentStudent.value.apiId,
       },
     )
 
     if (!report) {
       throw new Error('Не удалось сохранить отчет: ученик не найден')
+    }
+
+    const savedSkills = await studentsStore.saveStudentSkills(currentStudent.value, buildUpdatedStudentSkills())
+    if (savedSkills?.length) {
+      syncLoadedProfileSkills(savedSkills)
     }
 
     const completedSlot = completeSlot(props.slot.id)
@@ -125,7 +170,7 @@ async function saveReport() {
     await loadInstructorCalendar()
 
     emit('update:open', false)
-    emit('completed')
+    emit('completed', savedSkills)
   } catch (error) {
     console.error(error)
     isSaving.value = false
@@ -159,11 +204,11 @@ watch(
     header="Завершить тренировку"
     modal
   >
-    <div v-if="slot && student" class="form-stack">
+    <div v-if="slot && currentStudent" class="form-stack">
       <div class="note-list">
         <div>
           <span>Ученик</span>
-          <strong>{{ student.name }}</strong>
+          <strong>{{ currentStudent.name || 'Не указано' }}</strong>
         </div>
         <div>
           <span>Дата и время</span>
@@ -216,7 +261,7 @@ watch(
             <span>{{ skill.name }}</span>
             <strong>{{ skill.oldValue }}%</strong>
             <input
-                v-model="skill.newValue"
+                v-model.number="skill.newValue"
                 class="skill-percent-input"
                 max="100"
                 min="0"

@@ -4,8 +4,10 @@ import {TEST_USER_ID} from '@/api/client.ts'
 import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
 import type {BookingSlot} from '@/types/booking'
+import { useUserStore } from '@/stores/userStore'
 
-const currentStudentId = TEST_USER_ID
+const userStore = useUserStore()
+const currentStudentId = userStore.profile?.apiId || TEST_USER_ID
 const { activeStudentSlot, bookingError, cancelSlot, loadStudentBookingSlots, requestSlot, rescheduleSlot, availableSlots, slots } = useBookingStore()
 const selectedSlotId = ref<number | null>(null)
 const moving = ref(false)
@@ -113,11 +115,10 @@ async function submitBooking() {
     selectedSlotId.value = slot.id
     await requestSlot(
       slot.id,
-      currentStudentId,
       bookingForm.value.preference,
       bookingForm.value.studentComment,
       'requested',
-      TEST_USER_ID,
+      currentStudentId,
     )
   }
   await loadStudentBookingSlots(currentStudentId)

@@ -32,7 +32,7 @@ type NewStudentListItem = {
 }
 
 const userStore = useUserStore();
-const { slots } = useBookingStore()
+const { loadAllBookingSlots, slots } = useBookingStore()
 const {
   addManualTraining,
   addTrainingVideo,
@@ -91,6 +91,20 @@ const newStudentForm = ref({
   username: '',
   comment: '',
 })
+const monthMap: Record<string, number> = {
+  января: 0,
+  февраля: 1,
+  марта: 2,
+  апреля: 3,
+  мая: 4,
+  июня: 5,
+  июля: 6,
+  августа: 7,
+  сентября: 8,
+  октября: 9,
+  ноября: 10,
+  декабря: 11,
+}
 
 const allStudents = computed(() => (apiStudents.value.length > 0 ? apiStudents.value : studentsStore.students))
 const activeStudents = computed(() => allStudents.value.length)
@@ -121,6 +135,22 @@ const selectedStudentSlots = computed(() =>
       ['requested', 'reschedule', 'confirmed', 'completed'].includes(slot.status),
   ),
 )
+const selectedStudentActiveSlots = computed(() =>
+  selectedStudentSlots.value
+    .filter((slot) => ['requested', 'reschedule', 'confirmed'].includes(slot.status))
+    .sort((a, b) => parseSlotDateTime(a).getTime() - parseSlotDateTime(b).getTime()),
+)
+const selectedStudentNextLesson = computed(() => {
+  const nextSlot = selectedStudentActiveSlots.value[0]
+
+  if (!nextSlot) {
+    return 'Время еще не выбрано'
+  }
+
+  const location = nextSlot.finalLocation || nextSlot.location
+
+  return [nextSlot.date, nextSlot.time, location].filter(Boolean).join(' · ')
+})
 const selectedStudentReportSlots = computed(() =>
   selectedStudentSlots.value.filter((slot) => slot.status === 'confirmed'),
 )
@@ -141,6 +171,7 @@ onMounted(() => {
   userStore.loadInstructorProfile(DEFAULT_INSTRUCTOR_ID)
   userStore.loadSkills()
   studentsStore.loadStudents()
+  loadAllBookingSlots()
 })
 
 async function openStudentCard(nextStudent: Student) {
@@ -216,6 +247,13 @@ function isRecentStudent(createdAt?: string) {
 
 function durationText(duration: string) {
   return duration.replace('мин', 'минут')
+}
+
+function parseSlotDateTime(slot: Pick<BookingSlot, 'date' | 'time'>) {
+  const [day, month] = slot.date.split(' ')
+  const [hours, minutes] = slot.time.split(':').map(Number)
+
+  return new Date(2026, monthMap[month] ?? 0, Number(day) || 1, hours || 0, minutes || 0)
 }
 
 function statusLabel(status: BookingSlot['status']) {
@@ -297,7 +335,15 @@ function selectTrainingForReport(slot: BookingSlot) {
   completeTrainingDialogOpen.value = true
 }
 
-function handleTrainingReportCompleted() {
+function handleTrainingReportCompleted(savedSkills?: Skill[]) {
+  if (selectedStudent.value && savedSkills?.length) {
+    selectedStudent.value = {
+      ...selectedStudent.value,
+      skills: savedSkills,
+    }
+    editableSkills.value = savedSkills.map((skill) => ({ ...skill }))
+  }
+
   completeTrainingDialogOpen.value = false
   trainingToReport.value = null
 }
@@ -616,7 +662,7 @@ function removeSkill(id: number) {
         <div class="note-list">
           <div>
             <span>Ближайшая тренировка</span>
-            <strong>{{ selectedStudent.nextLesson }}</strong>
+            <strong>{{ selectedStudentNextLesson }}</strong>
           </div>
         </div>
 

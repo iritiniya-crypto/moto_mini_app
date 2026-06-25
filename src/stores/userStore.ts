@@ -69,7 +69,7 @@ export const useUserStore = defineStore('user', () => {
   async function loadProfile(studentId: string) {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 6000)
-    const apiStudentId = TEST_USER_ID || studentId
+    const apiStudentId = studentId || TEST_USER_ID
 
     isProfileLoading.value = true
     profileError.value = ''
@@ -91,7 +91,7 @@ export const useUserStore = defineStore('user', () => {
   async function loadInstructorProfile(instructorId: string) {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 6000)
-    const apiInstructorId = TEST_INSTRUCTOR_ID || instructorId
+    const apiInstructorId = instructorId || TEST_INSTRUCTOR_ID
 
     isInstructorProfileLoading.value = true
     instructorProfileError.value = ''

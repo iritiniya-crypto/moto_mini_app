@@ -5,7 +5,6 @@ import MetricCard from '@/components/MetricCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import SkillProgress from '@/components/SkillProgress.vue'
 import {useUserStore} from '@/stores/userStore.ts'
-import {TEST_USER_ID} from '@/api/client.ts'
 import type {PaymentStatus} from '@/types/package'
 import type {TrainingHistory} from '@/types/training'
 
@@ -41,7 +40,7 @@ function openTrainingDetails(history: TrainingHistory) {
 }
 
 async function loadStudentProfile() {
-  await userStore.loadProfile(TEST_USER_ID)
+  await userStore.loadProfile(apiProfile.value?.apiId || '')
 }
 
 onMounted(() => {
@@ -137,15 +136,6 @@ onMounted(() => {
             <strong>{{ selectedTrainingHistory.nextFocus || 'Не указано' }}</strong>
           </div>
         </div>
-        <a
-          v-if="selectedTrainingHistory.locationUrl"
-          :href="selectedTrainingHistory.locationUrl"
-          class="location-link"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Открыть локацию
-        </a>
         <a
           v-if="selectedTrainingHistory.videoUrl"
           :href="selectedTrainingHistory.videoUrl"

@@ -6,7 +6,6 @@ import {useBookingStore} from '@/composables/useBookingStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
 import {standardLocations} from '@/constants/locations.ts'
 import type {BookingSlot} from '@/types/booking'
-import type {Student} from '@/types/student'
 import type {TrainingHistory} from '@/types/training'
 import {useUserStore} from "@/stores/userStore.ts";
 
@@ -195,7 +194,6 @@ const confirmDialogOpen = ref(false)
 const requestToConfirm = ref<(BookingSlot & { student: string }) | null>(null)
 const completeTrainingDialogOpen = ref(false)
 const trainingToComplete = ref<BookingSlot | null>(null)
-const studentForTraining = ref<Student | null>(null)
 
 const finalLocationOptions = [...standardLocations.map((location) => location.name), 'Ввести вручную']
 const finalLocationForm = ref({
@@ -276,7 +274,6 @@ async function declineRequest(request: BookingSlot & { student: string }) {
 function openCompleteTrainingDialog(training: BookingSlot & { student: string }) {
   trainingToComplete.value = training
   userStore.loadProfile(training.studentId || '')
-  studentForTraining.value = userStore.profile
   completeTrainingDialogOpen.value = true
 }
 
@@ -291,7 +288,6 @@ function handleTrainingCompleted() {
 
   completeTrainingDialogOpen.value = false
   trainingToComplete.value = null
-  studentForTraining.value = null
 }
 
 function openLocation(url: string) {
@@ -431,7 +427,6 @@ onMounted(async () => {
     <CompleteTrainingDialog
       :slot="trainingToComplete"
       :open="completeTrainingDialogOpen"
-      :student="studentForTraining"
       @completed="handleTrainingCompleted"
       @update:open="completeTrainingDialogOpen = $event"
     />

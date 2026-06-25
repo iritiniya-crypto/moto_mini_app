@@ -72,7 +72,7 @@ describe('useBookingStore', () => {
     const store = useBookingStore()
     store.slots.value = [{ ...baseSlot } as any]
 
-    await store.requestSlot(101, 'student-2', 'Площадка', 'Комментарий')
+    await store.requestSlot(101, 'Площадка', 'Комментарий', 'requested', 'student-1')
 
     expect(store.slots.value[0].studentId).toBe('student-1')
     expect(store.slots.value[0].status).toBe('requested')
