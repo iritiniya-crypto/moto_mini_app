@@ -88,10 +88,10 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function loadInstructorProfile(instructorId: string) {
+  async function loadInstructorProfile() {
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 6000)
-    const apiInstructorId = instructorId || TEST_INSTRUCTOR_ID
+    const apiInstructorId = instructorProfile.value?.id || TEST_INSTRUCTOR_ID
 
     isInstructorProfileLoading.value = true
     instructorProfileError.value = ''

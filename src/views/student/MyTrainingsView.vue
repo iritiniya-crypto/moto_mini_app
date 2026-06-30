@@ -5,6 +5,7 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
 import type {BookingSlot} from '@/types/booking'
 import { useUserStore } from '@/stores/userStore'
+import { standardLocations } from '@/constants/locations'
 
 const userStore = useUserStore()
 const currentStudentId = userStore.profile?.apiId || TEST_USER_ID
@@ -16,7 +17,6 @@ const candidateSlot = ref<BookingSlot | null>(null)
 const cancelDialogOpen = ref(false)
 const trainingToCancel = ref<BookingSlot | null>(null)
 const availableSlotsSection = ref<HTMLElement | null>(null)
-const preferenceOptions = ['Площадка Запад', 'Серпантин', 'Город', 'Не знаю / нужна консультация']
 const bookingForm = ref({
   preference: 'Не знаю / нужна консультация',
   studentComment: '',
@@ -349,7 +349,7 @@ onMounted(() => {
 
         <label>
           Желаемый формат / локация
-          <Select v-model="bookingForm.preference" :options="preferenceOptions" />
+          <Select v-model="bookingForm.preference" :options="standardLocations" option-label="name" option-value="name"/>
         </label>
         <label>
           Комментарий для Никиты

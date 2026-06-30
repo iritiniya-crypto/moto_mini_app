@@ -14,8 +14,7 @@ import type {Skill} from '@/types/skill'
 import type {Student} from '@/types/student'
 import type {TrainingHistory} from '@/types/training'
 import {durationOptions} from "@/dictionary/durationOptions.ts";
-
-const DEFAULT_INSTRUCTOR_ID = 'dev-instructor-nikita'
+import { standardLocations } from '@/constants/locations'
 
 defineProps<{
   role: 'student' | 'instructor'
@@ -168,7 +167,7 @@ const isVideoUrlValid = computed(() => {
 
 onMounted(() => {
   userStore.checkHealth()
-  userStore.loadInstructorProfile(DEFAULT_INSTRUCTOR_ID)
+  userStore.loadInstructorProfile()
   userStore.loadSkills()
   studentsStore.loadStudents()
   loadAllBookingSlots()
@@ -335,15 +334,7 @@ function selectTrainingForReport(slot: BookingSlot) {
   completeTrainingDialogOpen.value = true
 }
 
-function handleTrainingReportCompleted(savedSkills?: Skill[]) {
-  if (selectedStudent.value && savedSkills?.length) {
-    selectedStudent.value = {
-      ...selectedStudent.value,
-      skills: savedSkills,
-    }
-    editableSkills.value = savedSkills.map((skill) => ({ ...skill }))
-  }
-
+function handleTrainingReportCompleted() {
   completeTrainingDialogOpen.value = false
   trainingToReport.value = null
 }
@@ -814,7 +805,7 @@ function removeSkill(id: number) {
         </label>
         <label>
           Локация
-          <InputText v-model="manualTrainingForm.location" placeholder="Например, Площадка Запад" />
+          <Select v-model="manualTrainingForm.location" :options="standardLocations" option-label="name" option-value="name"/>
         </label>
         <label>
           Что тренировали

@@ -65,6 +65,20 @@ describe('normalizers', () => {
     expect(slot.finalLocation).toBe('Площадка')
   })
 
+  it('calculates booking slot duration from startsAt and endsAt', () => {
+    const slot = normalizeBookingSlot(
+      {
+        id: 'slot-api-id',
+        startsAt: '2026-07-07T10:00:00.000Z',
+        endsAt: '2026-07-07T11:00:00.000Z',
+        status: 'available',
+      },
+      0,
+    )
+
+    expect(slot.duration).toBe('60 мин')
+  })
+
   it('normalizes student profile core fields', () => {
     const student = normalizeStudent({
       id: 'student-api-id',

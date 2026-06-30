@@ -71,7 +71,7 @@ export function formatTime(value: unknown) {
   }).format(new Date(value))
 }
 
-export function durationText(value: unknown, endsAt?: unknown) {
+export function durationText(value: unknown, endsAt?: unknown, startsAt?: unknown) {
   if (typeof value === 'number') {
     return `${value} мин`
   }
@@ -80,8 +80,8 @@ export function durationText(value: unknown, endsAt?: unknown) {
     return value
   }
 
-  if (typeof endsAt === 'string' && typeof value === 'string') {
-    const diff = new Date(endsAt).getTime() - new Date(value).getTime()
+  if (typeof endsAt === 'string' && typeof startsAt === 'string') {
+    const diff = new Date(endsAt).getTime() - new Date(startsAt).getTime()
     if (Number.isFinite(diff) && diff > 0) {
       return `${Math.round(diff / 60000)} мин`
     }
@@ -219,7 +219,11 @@ export function normalizeHistory(source: unknown): TrainingHistory[] {
         ? pick(history, 'bookingSlotId', 'booking_slot_id', 'slotId', 'slot_id')
         : undefined,
       date: formatDate(pick(history, 'trainedAt', 'trained_at', 'date') ?? pick(slot, 'startsAt', 'starts_at')),
-      duration: durationText(pick(slot, 'durationMinutes', 'duration_minutes', 'duration'), pick(slot, 'endsAt', 'ends_at')),
+      duration: durationText(
+        pick(slot, 'durationMinutes', 'duration_minutes', 'duration'),
+        pick(slot, 'endsAt', 'ends_at'),
+        pick(slot, 'startsAt', 'starts_at'),
+      ),
       location: pick(history, 'location') ?? pick(slot, 'finalLocation', 'final_location') ?? pick(slot, 'location'),
       locationUrl: pick(history, 'locationUrl', 'location_url') ?? pick(slot, 'finalLocationUrl', 'final_location_url', 'locationUrl', 'location_url'),
       theme: topics.join(', ') || String(pick(history, 'summary') ?? 'Тренировка'),
@@ -313,7 +317,11 @@ export function normalizeBookingSlot(source: ApiRecord, index = 0): BookingSlot 
     apiId: typeof pick(source, 'id') === 'string' ? pick(source, 'id') : undefined,
     date: formatDate(pick(source, 'startsAt', 'starts_at')),
     time: formatTime(pick(source, 'startsAt', 'starts_at')),
-    duration: durationText(pick(source, 'durationMinutes', 'duration_minutes'), pick(source, 'endsAt', 'ends_at')),
+    duration: durationText(
+      pick(source, 'durationMinutes', 'duration_minutes'),
+      pick(source, 'endsAt', 'ends_at'),
+      pick(source, 'startsAt', 'starts_at'),
+    ),
     previousDate: previousStartsAt ? formatDate(previousStartsAt) : undefined,
     previousTime: previousStartsAt ? formatTime(previousStartsAt) : undefined,
     previousDuration: previousStartsAt ? durationText(previousDuration) : undefined,

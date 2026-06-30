@@ -16,14 +16,9 @@ const currentStudentId = userStore.profile?.apiId || TEST_USER_ID
 const slotDialogOpen = ref(false)
 const editingSlotId = ref<number | null>(null)
 const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
-const defaultSlotTime = () => {
-  const date = new Date()
-  date.setHours(17, 30, 0, 0)
-  return date
-}
 const slotForm = ref({
   dateValue: new Date(),
-  timeValue: defaultSlotTime(),
+  timeValue: '17:30',
   duration: '90 мин',
 })
 const bookedSlotId = ref<number | null>(null)
@@ -64,14 +59,6 @@ function formatDate(value: Date) {
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(value).replace(' г.', '')
 }
 
-function formatTime(value: Date) {
-  return new Intl.DateTimeFormat('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(value)
-}
-
 function parseSlotDate(value: string) {
   const monthMap: Record<string, number> = {
     января: 0,
@@ -92,17 +79,11 @@ function parseSlotDate(value: string) {
   return new Date(2026, monthMap[month] ?? 4, Number(day) || 1)
 }
 
-function parseSlotTime(value: string, date = new Date(2026, 5, 3)) {
-  const [hours, minutes] = value.split(':').map(Number)
-
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours || 12, minutes || 0)
-}
-
 function openAddSlot() {
   editingSlotId.value = null
   slotForm.value = {
     dateValue: new Date(),
-    timeValue: defaultSlotTime(),
+    timeValue: '17:30',
     duration: '90 мин',
   }
   slotDialogOpen.value = true
@@ -113,7 +94,7 @@ function openEditSlot(slot: BookingSlot) {
   editingSlotId.value = slot.id
   slotForm.value = {
     dateValue,
-    timeValue: parseSlotTime(slot.time, dateValue),
+    timeValue: slot.time,
     duration: slot.duration,
   }
   slotDialogOpen.value = true
@@ -123,7 +104,7 @@ async function saveSlot() {
   const currentSlot = editingSlotId.value ? slots.value.find((slot) => slot.id === editingSlotId.value) : null
   const nextSlot = {
     date: formatDate(slotForm.value.dateValue),
-    time: formatTime(slotForm.value.timeValue),
+    time: slotForm.value.timeValue,
     duration: slotForm.value.duration,
     status: currentSlot?.status ?? 'available',
   }
@@ -225,7 +206,7 @@ onMounted(() => {
         </label>
         <label>
           Время
-          <DatePicker v-model="slotForm.timeValue" :minDate="new Date(Date.now())" hour-format="24" show-icon time-only />
+          <InputText v-model="slotForm.timeValue" step="900" type="time" />
         </label>
         <label>
           Длительность
