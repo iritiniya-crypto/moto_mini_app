@@ -173,7 +173,7 @@ p {
 
 .vehicle-switch {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin-top: 16px;
   padding: 5px;

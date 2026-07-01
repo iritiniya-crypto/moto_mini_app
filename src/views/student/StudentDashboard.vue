@@ -2,6 +2,7 @@
 import {computed, ref} from 'vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import {
+  gymkhanaPrograms,
   motorcyclePrograms,
   scooterPrograms,
   type TheoryCard,
@@ -9,14 +10,33 @@ import {
   type TrainingProgram,
 } from '@/constants/trainingContent.ts'
 
-type VehicleMode = 'scooter' | 'motorcycle'
+type VehicleMode = 'scooter' | 'motorcycle' | 'gymkhana'
 
 const activeMode = ref<VehicleMode>('scooter')
 const selectedProgram = ref<TrainingProgram | null>(null)
 const selectedTheory = ref<TheoryCard | null>(null)
 const expandedPlanDay = ref<string | null>(null)
 
-const programs = computed(() => (activeMode.value === 'scooter' ? scooterPrograms : motorcyclePrograms))
+const programs = computed(() => {
+  if (activeMode.value === 'scooter') {
+    return scooterPrograms
+  }
+
+  if (activeMode.value === 'gymkhana') {
+    return gymkhanaPrograms
+  }
+
+  return motorcyclePrograms
+})
+const activeModeLabel = computed(() => {
+  const labels: Record<VehicleMode, string> = {
+    scooter: 'скутер',
+    motorcycle: 'мотоцикл',
+    gymkhana: 'джимхана',
+  }
+
+  return labels[activeMode.value]
+})
 
 function openProgram(program: TrainingProgram) {
   selectedProgram.value = program
@@ -43,12 +63,15 @@ function togglePlanDay(day: string) {
           <button :class="{ active: activeMode === 'motorcycle' }" type="button" @click="activeMode = 'motorcycle'">
             Мотоцикл
           </button>
+          <button :class="{ active: activeMode === 'gymkhana' }" type="button" @click="activeMode = 'gymkhana'">
+            Джимхана
+          </button>
         </div>
       </template>
     </Card>
 
     <section>
-      <SectionHeader :action="activeMode === 'scooter' ? 'скутер' : 'мотоцикл'" title="Программы тренировок" />
+      <SectionHeader :action="activeModeLabel" title="Программы тренировок" />
       <div class="stack tight">
         <Card v-for="program in programs" :key="program.id" class="program-card">
           <template #content>
