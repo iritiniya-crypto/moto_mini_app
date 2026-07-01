@@ -15,6 +15,7 @@ type VehicleMode = 'scooter' | 'motorcycle' | 'gymkhana'
 const activeMode = ref<VehicleMode>('scooter')
 const selectedProgram = ref<TrainingProgram | null>(null)
 const selectedTheory = ref<TheoryCard | null>(null)
+const paymentProgram = ref<TrainingProgram | null>(null)
 const expandedPlanDay = ref<string | null>(null)
 
 const programs = computed(() => {
@@ -41,6 +42,10 @@ const activeModeLabel = computed(() => {
 function openProgram(program: TrainingProgram) {
   selectedProgram.value = program
   expandedPlanDay.value = null
+}
+
+function openPayment(program: TrainingProgram) {
+  paymentProgram.value = program
 }
 
 function togglePlanDay(day: string) {
@@ -90,6 +95,13 @@ function togglePlanDay(day: string) {
             </div>
 
             <Button icon="pi pi-angle-right" label="Подробнее" size="small" @click="openProgram(program)" />
+            <Button
+              icon="pi pi-qrcode"
+              label="Приобрести пакет тренировок"
+              severity="secondary"
+              size="small"
+              @click="openPayment(program)"
+            />
           </template>
         </Card>
       </div>
@@ -186,9 +198,40 @@ function togglePlanDay(day: string) {
               <strong>{{ price }}</strong>
             </div>
           </div>
+          <Button
+            class="payment-action"
+            icon="pi pi-qrcode"
+            label="Приобрести пакет тренировок"
+            severity="secondary"
+            @click="openPayment(selectedProgram)"
+          />
         </section>
 
         <p v-if="selectedProgram.note" class="status-message">{{ selectedProgram.note }}</p>
+      </div>
+    </Dialog>
+
+    <Dialog
+      :visible="Boolean(paymentProgram)"
+      class="moto-dialog payment-dialog"
+      header="Предоплата по QR"
+      modal
+      @update:visible="paymentProgram = null"
+    >
+      <div v-if="paymentProgram" class="payment-dialog-content">
+        <div>
+          <Tag :value="paymentProgram.duration" />
+          <h2>{{ paymentProgram.title }}</h2>
+          <p>Отсканируйте QR-код для предоплаты пакета тренировок.</p>
+        </div>
+
+        <div class="payment-qr-card">
+          <img alt="QR для предоплаты пакета тренировок" src="/payment-qr.svg" />
+        </div>
+
+        <div class="soft-note">
+          После оплаты напишите Никите в Telegram, чтобы он отметил пакет в карточке ученика.
+        </div>
       </div>
     </Dialog>
 

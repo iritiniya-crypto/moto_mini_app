@@ -749,6 +749,42 @@ p {
   line-height: 1.35;
 }
 
+.payment-action {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.payment-dialog-content {
+  display: grid;
+  gap: 16px;
+}
+
+.payment-dialog-content h2 {
+  margin: 10px 0 6px;
+}
+
+.payment-dialog-content p {
+  color: var(--muted);
+}
+
+.payment-qr-card {
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border: 1px solid rgba(244, 186, 69, 0.22);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.payment-qr-card img {
+  display: block;
+  width: min(100%, 280px);
+  aspect-ratio: 1;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #fff;
+}
+
 .plan-accordion {
   display: grid;
   gap: 10px;
