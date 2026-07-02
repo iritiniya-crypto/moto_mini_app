@@ -375,17 +375,17 @@ onMounted(async () => {
       <div class="stack tight">
         <Card v-for="request in requests" :key="request.id" class="request-card">
           <template #content>
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-              <div style="display: flex; gap: 2rem;">
-                <div style="display: flex; align-items: center; justify-content: center">
+            <div class="booking-request-content">
+              <div class="booking-request-top">
+                <div class="booking-request-avatar-cell">
                   <Avatar class="student-request-avatar" image="student-avatar.png" shape="circle" size="large" />
                 </div>
-                <div style="display: flex; gap: 1rem; flex-direction: column; align-items: flex-end; justify-content: flex-start">
+                <div class="booking-request-details">
                   <h3>{{ request.student }}</h3>
-                  <p style="text-align: right">{{ request.date }} · {{ request.time }} · {{ durationText(request.duration) }}</p>
-                  <p v-if="request.packageText" style="text-align: right">{{ request.packageText }}</p>
-                  <p style="text-align: right">Пожелание: {{ request.preference || 'Не знаю / нужна консультация' }}</p>
-                  <p v-if="request.studentComment" style="text-align: right">Комментарий: "{{ request.studentComment }}"</p>
+                  <strong class="booking-request-time">{{ request.date }} · {{ request.time }} · {{ durationText(request.duration) }}</strong>
+                  <p v-if="request.packageText">{{ request.packageText }}</p>
+                  <p><b>Пожелание:</b> {{ request.preference || 'Не знаю / нужна консультация' }}</p>
+                  <p v-if="request.studentComment"><b>Комментарий:</b> "{{ request.studentComment }}"</p>
                 </div>
               </div>
               <Tag

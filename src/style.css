@@ -1116,6 +1116,55 @@ p {
   border-color: rgba(244, 186, 69, 0.22);
 }
 
+.booking-request-content {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+}
+
+.booking-request-top {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.booking-request-avatar-cell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.booking-request-details {
+  display: grid;
+  min-width: 0;
+  justify-items: end;
+  gap: 12px;
+  text-align: right;
+}
+
+.booking-request-details h3,
+.booking-request-details p {
+  margin: 0;
+}
+
+.booking-request-details p,
+.booking-request-time {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.booking-request-time {
+  font-weight: 900;
+}
+
+.booking-request-details b {
+  color: var(--text);
+  font-weight: 900;
+}
+
 .request-top {
   align-items: flex-start;
 }
@@ -1127,11 +1176,16 @@ p {
 .student-request-avatar {
   width: 100px;
   height: 100px;
+  min-width: 100px;
+  min-height: 100px;
+  aspect-ratio: 1;
   flex: 0 0 100px;
   overflow: hidden;
+  border-radius: 50%;
 }
 
 .student-request-avatar img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
