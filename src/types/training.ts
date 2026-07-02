@@ -1,4 +1,5 @@
 import type {BookingSlotStatus} from './booking'
+import type {ApiTrainingPackage} from './package'
 import type {StudentLevel} from './student'
 
 export interface ApiTrainingReport {
@@ -159,4 +160,5 @@ export interface CreateTrainingReportResponse {
     id: string
     level: StudentLevel
   }
+  trainingPackage?: ApiTrainingPackage | null
 }

@@ -9,7 +9,7 @@ import {useStudentsStore} from '@/stores/studentsStore.ts'
 import {useUserStore} from '@/stores/userStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
 import type {BookingSlot} from '@/types/booking'
-import type {PaymentStatus, TrainingPackageName} from '@/types/package'
+import type {PaymentStatus, TrainingPackage, TrainingPackageName} from '@/types/package'
 import type {Skill} from '@/types/skill'
 import type {Student} from '@/types/student'
 import type {TrainingHistory} from '@/types/training'
@@ -349,7 +349,26 @@ function selectTrainingForReport(slot: BookingSlot) {
   completeTrainingDialogOpen.value = true
 }
 
-function handleTrainingReportCompleted() {
+function handleTrainingReportCompleted(payload?: { skills?: Skill[]; trainingPackage?: TrainingPackage }) {
+  if (selectedStudent.value && payload?.skills?.length) {
+    selectedStudent.value = {
+      ...selectedStudent.value,
+      skills: payload.skills,
+    }
+    editableSkills.value = payload.skills.map((skill) => ({ ...skill }))
+  }
+
+  if (selectedStudent.value && payload?.trainingPackage) {
+    selectedStudent.value = {
+      ...selectedStudent.value,
+      trainingPackage: payload.trainingPackage,
+    }
+    packageTotal.value = payload.trainingPackage.total
+    packageCompleted.value = payload.trainingPackage.completed
+    packagePaymentStatus.value = payload.trainingPackage.paymentStatus
+    packageName.value = packageNameForStudent(selectedStudent.value)
+  }
+
   completeTrainingDialogOpen.value = false
   trainingToReport.value = null
 }

@@ -5,15 +5,23 @@ import {useTrainingStore} from '@/composables/useTrainingStore'
 import {useStudentsStore} from '@/stores/studentsStore'
 import {useUserStore} from '@/stores/userStore'
 import type {BookingSlot, Skill} from '@/types'
+import type {TrainingPackage} from '@/types/package'
+import type {Student} from '@/types/student'
 
 interface Props {
   open: boolean
   slot: BookingSlot | null
+  student?: Student | null
+}
+
+type CompletedPayload = {
+  skills?: Skill[]
+  trainingPackage?: TrainingPackage
 }
 
 interface Emits {
   (e: 'update:open', value: boolean): void
-  (e: 'completed', skills?: Skill[]): void
+  (e: 'completed', payload?: CompletedPayload): void
 }
 
 const props = defineProps<Props>()
@@ -23,7 +31,7 @@ const { completeSlot, loadInstructorCalendar } = useBookingStore()
 const { createTrainingReport } = useTrainingStore()
 const studentsStore = useStudentsStore()
 const userStore = useUserStore()
-const currentStudent = computed(() => userStore.profile || null)
+const currentStudent = computed(() => props.student || userStore.profile || null)
 
 const selectedSkills = ref<Skill[]>([])
 const skillImprovements = ref<Record<string, string>>({})
@@ -121,6 +129,20 @@ function syncLoadedProfileSkills(skills: Skill[]) {
   }
 }
 
+function syncLoadedProfilePackage(trainingPackage?: TrainingPackage) {
+  if (!trainingPackage || !currentStudent.value || !userStore.profile) {
+    return
+  }
+
+  const sameStudent =
+    userStore.profile.id === currentStudent.value.id ||
+    (currentStudent.value.apiId && userStore.profile.apiId === currentStudent.value.apiId)
+
+  if (sameStudent) {
+    userStore.profile.trainingPackage = trainingPackage
+  }
+}
+
 async function saveReport() {
   if (!props.slot || !currentStudent.value || !isFormValid.value || isSaving.value) return
 
@@ -162,6 +184,9 @@ async function saveReport() {
       syncLoadedProfileSkills(savedSkills)
     }
 
+    const savedPackage = report.trainingPackage
+    syncLoadedProfilePackage(savedPackage)
+
     const completedSlot = completeSlot(props.slot.id)
     if (!completedSlot) {
       throw new Error('Не удалось завершить тренировку: слот не найден')
@@ -170,7 +195,7 @@ async function saveReport() {
     await loadInstructorCalendar()
 
     emit('update:open', false)
-    emit('completed', savedSkills)
+    emit('completed', { skills: savedSkills, trainingPackage: savedPackage })
   } catch (error) {
     console.error(error)
     isSaving.value = false

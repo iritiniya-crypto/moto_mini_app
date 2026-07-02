@@ -14,6 +14,7 @@ import type {TrainingPackage} from '../types/package'
 import {useUserStore} from "@/stores/userStore.ts";
 
 const trainingReports = ref<TrainingReport[]>([])
+type SavedTrainingReport = TrainingReport & { trainingPackage?: TrainingPackage }
 
 export function useTrainingStore() {
   async function saveReportLocally(report: Omit<TrainingReport, 'id' | 'createdAt'>, apiId?: string, historyApiId?: string) {
@@ -102,11 +103,31 @@ export function useTrainingStore() {
         levelUpdate: report.levelUpdate,
       })
 
-      return saveReportLocally(
+      const savedReport = await saveReportLocally(
         report,
         response.report.id,
         response.trainingHistory.id,
       )
+
+      if (!savedReport) {
+        return null
+      }
+
+      const trainingPackage = response.trainingPackage
+        ? normalizeTrainingPackage(response.trainingPackage)
+        : undefined
+
+      if (trainingPackage) {
+        const userStore = useUserStore()
+        if (userStore.profile) {
+          userStore.profile.trainingPackage = trainingPackage
+        }
+      }
+
+      return {
+        ...savedReport,
+        trainingPackage,
+      } satisfies SavedTrainingReport
     } catch {
       return null
     }

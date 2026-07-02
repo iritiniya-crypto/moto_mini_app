@@ -306,13 +306,14 @@ function openTrainingReport(training: CalendarTraining) {
   selectedReportTraining.value = training
 }
 
-function handleTrainingCompleted() {
+async function handleTrainingCompleted() {
   if (confirmedRequest.value?.id === trainingToComplete.value?.id) {
     confirmedRequest.value = null
   }
 
   completeTrainingDialogOpen.value = false
   trainingToComplete.value = null
+  await studentsStore.loadStudents()
 }
 
 function openLocation(url: string) {
