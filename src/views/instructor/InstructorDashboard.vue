@@ -1,15 +1,20 @@
 <script lang="ts" setup>
 import {computed, onMounted, ref} from 'vue'
+import {storeToRefs} from 'pinia'
 import CompleteTrainingDialog from '@/components/CompleteTrainingDialog.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
 import {standardLocations} from '@/constants/locations.ts'
+import {useStudentsStore} from '@/stores/studentsStore'
 import type {BookingSlot} from '@/types/booking'
 import type {TrainingHistory} from '@/types/training'
 import {useUserStore} from "@/stores/userStore.ts";
+import {packageNameForStudent} from '@/utils/trainingPackageName'
 
 const userStore = useUserStore()
+const studentsStore = useStudentsStore()
+const {students} = storeToRefs(studentsStore)
 const { confirmSlot, declineSlot, loadInstructorCalendar, requestedSlots, rescheduleSlots, slots } = useBookingStore()
 const { getStudentTrainingHistory, trainingReports } = useTrainingStore()
 type CalendarFilter = 'all' | 'available' | 'requested' | 'reschedule' | 'confirmed' | 'completed'
@@ -54,6 +59,26 @@ function todayLabel() {
 
 function studentName(slot: BookingSlot) {
   return slot.studentName  || 'Ученик'
+}
+
+function studentForSlot(slot: BookingSlot) {
+  return students.value.find((student) =>
+    student.id === slot.studentId ||
+    student.apiId === slot.studentId ||
+    student.id === slot.studentApiId ||
+    student.apiId === slot.studentApiId,
+  )
+}
+
+function packageTextForSlot(slot: BookingSlot) {
+  const student = studentForSlot(slot)
+  const trainingPackage = student?.trainingPackage
+
+  if (!student || !trainingPackage) {
+    return ''
+  }
+
+  return `Пакет "${packageNameForStudent(student)}" ${trainingPackage.completed}/${trainingPackage.total}`
 }
 
 function parseSlotDateTime(slot: Pick<BookingSlot, 'date' | 'time'>) {
@@ -135,7 +160,7 @@ async function loadCalendarHistories() {
 
 const requests = computed(() =>
   requestedSlots.value.map((slot) => {
-    return { ...slot, student: studentName(slot) }
+    return { ...slot, student: studentName(slot), packageText: packageTextForSlot(slot) }
   })
 )
 
@@ -296,6 +321,7 @@ function openLocation(url: string) {
 
 onMounted(async () => {
   await loadInstructorCalendar()
+  await studentsStore.loadStudents()
   await loadCalendarHistories()
 })
 
@@ -356,6 +382,7 @@ onMounted(async () => {
                 <div style="display: flex; gap: 1rem; flex-direction: column; align-items: flex-end; justify-content: flex-start">
                   <h3>{{ request.student }}</h3>
                   <p style="text-align: right">{{ request.date }} · {{ request.time }} · {{ durationText(request.duration) }}</p>
+                  <p v-if="request.packageText" style="text-align: right">{{ request.packageText }}</p>
                   <p style="text-align: right">Пожелание: {{ request.preference || 'Не знаю / нужна консультация' }}</p>
                   <p v-if="request.studentComment" style="text-align: right">Комментарий: "{{ request.studentComment }}"</p>
                 </div>

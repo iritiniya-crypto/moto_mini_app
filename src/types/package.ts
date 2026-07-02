@@ -1,5 +1,6 @@
 export type TrainingPackagePaymentStatus = 'unpaid' | 'paid' | 'partial'
 export type TrainingPackageStatus = 'active' | 'completed' | 'cancelled'
+export type TrainingPackageName = 'Скутер' | 'Мотоцикл' | 'Джимхана'
 
 export type PaymentStatus = 'оплачено' | 'не оплачено' | 'частично оплачено'
 
@@ -12,11 +13,13 @@ export interface ApiTrainingPackage {
   startedAt: string
   endedAt: string
   isActive: boolean
+  name?: TrainingPackageName
   createdAt: string
   updatedAt: string
 }
 
 export type TrainingPackage = {
+  name?: TrainingPackageName
   total: number
   completed: number
   paymentStatus: PaymentStatus
@@ -26,6 +29,7 @@ export type TrainingPackage = {
 }
 
 export interface UpsertTrainingPackageRequest {
+  name?: TrainingPackageName
   totalTrainings: number
   completedTrainings: number
   paymentStatus: TrainingPackagePaymentStatus

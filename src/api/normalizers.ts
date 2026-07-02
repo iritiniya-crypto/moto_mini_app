@@ -170,6 +170,7 @@ export function normalizePackage(source: ApiRecord | undefined): TrainingPackage
   }
 
   return {
+    name: pick(source, 'name', 'packageName', 'package_name', 'type', 'vehicleType', 'vehicle_type'),
     total: Number(pick(source, 'totalSessions', 'totalTrainings', 'total_trainings', 'total') ?? 0),
     completed: Number(pick(source, 'usedSessions', 'completedTrainings', 'completed_trainings', 'completed') ?? 0),
     paymentStatus: paymentStatus(pick(source, 'paymentStatus', 'payment_status')),

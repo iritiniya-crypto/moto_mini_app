@@ -13,6 +13,7 @@ export async function upsertStudentPackage(studentId: string, payload: UpsertTra
 
 export function packageToPayload(trainingPackage: TrainingPackage): UpsertTrainingPackageRequest {
   return {
+    name: trainingPackage.name,
     totalTrainings: trainingPackage.total,
     completedTrainings: trainingPackage.completed,
     paymentStatus: paymentStatusToApi(trainingPackage.paymentStatus),

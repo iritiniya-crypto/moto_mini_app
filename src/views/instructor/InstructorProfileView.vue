@@ -9,12 +9,17 @@ import {useStudentsStore} from '@/stores/studentsStore.ts'
 import {useUserStore} from '@/stores/userStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
 import type {BookingSlot} from '@/types/booking'
-import type {PaymentStatus} from '@/types/package'
+import type {PaymentStatus, TrainingPackageName} from '@/types/package'
 import type {Skill} from '@/types/skill'
 import type {Student} from '@/types/student'
 import type {TrainingHistory} from '@/types/training'
 import {durationOptions} from "@/dictionary/durationOptions.ts";
 import { standardLocations } from '@/constants/locations'
+import {
+  packageNameForStudent,
+  setStoredPackageName,
+  trainingPackageNameOptions,
+} from '@/utils/trainingPackageName'
 
 defineProps<{
   role: 'student' | 'instructor'
@@ -61,6 +66,7 @@ const level = ref('')
 const packageTotal = ref(selectedStudent.value?.trainingPackage?.total ?? 0)
 const packageCompleted = ref(selectedStudent.value?.trainingPackage?.completed ?? 0)
 const packagePaymentStatus = ref<PaymentStatus>(selectedStudent.value?.trainingPackage?.paymentStatus ?? 'не оплачено')
+const packageName = ref<TrainingPackageName>('Скутер')
 const editableSkills = ref<Skill[]>([])
 const selectedStudentHistory = ref<TrainingHistory[]>([])
 const selectedTrainingHistory = ref<TrainingHistory | null>(null)
@@ -183,6 +189,7 @@ async function openStudentCard(nextStudent: Student) {
   packageTotal.value = nextStudent.trainingPackage?.total ?? 0
   packageCompleted.value = nextStudent.trainingPackage?.completed ?? 0
   packagePaymentStatus.value = nextStudent.trainingPackage?.paymentStatus ?? 'не оплачено'
+  packageName.value = packageNameForStudent(nextStudent)
   trainingPlan.value = nextStudent.focus || ''
   editableSkills.value = (nextStudent.skills || []).map((skill) => ({ ...skill }))
   studentSaveMessage.value = ''
@@ -194,6 +201,7 @@ async function openStudentCard(nextStudent: Student) {
   studentName.value = profileStudent.name
   level.value = profileStudent.level
   trainingPlan.value = profileStudent.focus || ''
+  packageName.value = packageNameForStudent(profileStudent)
 
   const [apiPackage, apiSkills] = await Promise.all([
     studentsStore.loadStudentPackage(profileStudent),
@@ -213,6 +221,7 @@ async function openStudentCard(nextStudent: Student) {
   packageTotal.value = selectedStudent.value.trainingPackage?.total ?? 0
   packageCompleted.value = selectedStudent.value.trainingPackage?.completed ?? 0
   packagePaymentStatus.value = selectedStudent.value.trainingPackage?.paymentStatus ?? 'не оплачено'
+  packageName.value = packageNameForStudent(selectedStudent.value)
   editableSkills.value = (selectedStudent.value.skills || []).map((skill) => ({ ...skill }))
 }
 
@@ -292,6 +301,7 @@ async function saveStudentChanges() {
   })
 
   const savedPackage = await studentsStore.saveStudentPackage(updatedStudentFromApi, {
+    name: packageName.value,
     total: nextPackageTotal,
     completed: nextPackageCompleted,
     paymentStatus: packagePaymentStatus.value,
@@ -305,20 +315,25 @@ async function saveStudentChanges() {
     name: updatedStudentFromApi.name,
     level: updatedStudentFromApi.level,
     focus: updatedStudentFromApi.focus,
-    trainingPackage: savedPackage,
+    trainingPackage: savedPackage ? { ...savedPackage, name: packageName.value } : savedPackage,
     skills: savedSkills,
   })
   await updateStudentSkills(currentStudent.id, savedSkills)
 
   selectedStudent.value = {
     ...updatedStudentFromApi,
-    trainingPackage: savedPackage,
+    trainingPackage: savedPackage ? { ...savedPackage, name: packageName.value } : savedPackage,
     skills: savedSkills,
   }
+  if (selectedStudent.value.apiId) {
+    setStoredPackageName(selectedStudent.value.apiId, packageName.value)
+  }
+  setStoredPackageName(selectedStudent.value.id, packageName.value)
   studentName.value = selectedStudent.value.name
   packageTotal.value = selectedStudent.value.trainingPackage?.total ?? 0
   packageCompleted.value = selectedStudent.value.trainingPackage?.completed ?? 0
   packagePaymentStatus.value = selectedStudent.value.trainingPackage?.paymentStatus ?? 'не оплачено'
+  packageName.value = packageNameForStudent(selectedStudent.value)
   editableSkills.value = (selectedStudent.value.skills || []).map((skill) => ({ ...skill }))
 
   studentSaveMessage.value = studentsError.value || 'Изменения сохранены'
@@ -626,6 +641,10 @@ function removeSkill(id: number) {
         <section class="package-editor">
           <SectionHeader title="Пакет тренировок" />
           <div class="package-grid">
+            <label>
+              Название пакета
+              <Select v-model="packageName" :options="trainingPackageNameOptions" />
+            </label>
             <label>
               Количество тренировок в пакете
               <input v-model.number="packageTotal" class="skill-percent-input" min="0" type="number" />
