@@ -17,6 +17,7 @@
     "@primeuix/themes": "^2.0.3",
     "@twa-dev/sdk": "^8.0.2",
     "axios": "^1.16.1",
+    "dayjs": "^1.11.21",
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.5",

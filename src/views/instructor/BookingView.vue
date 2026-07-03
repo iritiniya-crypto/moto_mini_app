@@ -5,6 +5,7 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
 import type {BookingSlot} from '@/types/booking'
 import { useUserStore } from '@/stores/userStore'
+import dayjs from 'dayjs'
 
 const props = defineProps<{
   role: 'student' | 'instructor'
@@ -13,13 +14,22 @@ const props = defineProps<{
 const { addSlot, bookingManagementSlots, loadAllBookingSlots, removeSlot, requestSlot, updateSlot, availableSlots, slots } = useBookingStore()
 const userStore = useUserStore()
 const currentStudentId = userStore.profile?.apiId || TEST_USER_ID
-const slotDialogOpen = ref(false)
+const addOneSlotDialogOpen = ref(false)
+const addDaySlotDialogOpen = ref(false)
 const editingSlotId = ref<number | null>(null)
 const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
-const slotForm = ref({
+const tomorrowAtNine = dayjs().add(1, 'day').set('hour', 9).startOf('hour');
+const tomorrowAt17 = dayjs().add(1, 'day').set('hour', 17).startOf('hour');  
+const oneSlotForm = ref({
   dateValue: new Date(),
-  timeValue: '17:30',
+  timeValue: '11:30',
   duration: '90 мин',
+})
+const daySlotForm = ref({
+  dateValue: new Date(),
+  timeStart: tomorrowAtNine.toDate(),
+  timeEnd: tomorrowAt17.toDate(),
+  duration: '60 мин',
 })
 const bookedSlotId = ref<number | null>(null)
 const visibleSlots = computed(() =>
@@ -81,31 +91,35 @@ function parseSlotDate(value: string) {
 
 function openAddSlot() {
   editingSlotId.value = null
-  slotForm.value = {
+  oneSlotForm.value = {
     dateValue: new Date(),
-    timeValue: '17:30',
+    timeValue: '11:30',
     duration: '90 мин',
   }
-  slotDialogOpen.value = true
+  addOneSlotDialogOpen.value = true
+}
+
+function openAddDaySlot() {
+  addDaySlotDialogOpen.value = true
 }
 
 function openEditSlot(slot: BookingSlot) {
   const dateValue = parseSlotDate(slot.date)
   editingSlotId.value = slot.id
-  slotForm.value = {
+  oneSlotForm.value = {
     dateValue,
     timeValue: slot.time,
     duration: slot.duration,
   }
-  slotDialogOpen.value = true
+  addOneSlotDialogOpen.value = true
 }
 
 async function saveSlot() {
   const currentSlot = editingSlotId.value ? slots.value.find((slot) => slot.id === editingSlotId.value) : null
   const nextSlot = {
-    date: formatDate(slotForm.value.dateValue),
-    time: slotForm.value.timeValue,
-    duration: slotForm.value.duration,
+    date: formatDate(oneSlotForm.value.dateValue),
+    time: oneSlotForm.value.timeValue,
+    duration: oneSlotForm.value.duration,
     status: currentSlot?.status ?? 'available',
   }
 
@@ -115,7 +129,7 @@ async function saveSlot() {
     await addSlot(nextSlot)
   }
   await loadAllBookingSlots()
-  slotDialogOpen.value = false
+  addOneSlotDialogOpen.value = false
 }
 
 async function bookSlot(slot: BookingSlot) {
@@ -150,7 +164,15 @@ onMounted(() => {
           v-if="props.role === 'instructor'"
           icon="pi pi-plus"
           label="Добавить слот"
+          style="margin-bottom: 1rem"
           @click="openAddSlot"
+        />
+        <br />
+        <Button
+          v-if="props.role === 'instructor'"
+          icon="pi pi-plus"
+          label="Добавить слоты на день"
+          @click="openAddDaySlot"
         />
       </template>
     </Card>
@@ -198,19 +220,43 @@ onMounted(() => {
       </template>
     </Card>
 
-    <Dialog v-model:visible="slotDialogOpen" class="moto-dialog" header="Слот для записи" modal>
+    <Dialog v-model:visible="addOneSlotDialogOpen" class="moto-dialog" header="Слот для записи" modal
+    :draggable="false">
       <div class="form-stack">
         <label>
           Дата
-          <DatePicker v-model="slotForm.dateValue" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon />
+          <DatePicker v-model="oneSlotForm.dateValue" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon />
         </label>
         <label>
           Время
-          <InputText v-model="slotForm.timeValue" step="900" type="time" />
+          <InputText v-model="oneSlotForm.timeValue" step="900" type="time" />
         </label>
         <label>
           Длительность
-          <Select v-model="slotForm.duration" :options="durationOptions" />
+          <Select v-model="oneSlotForm.duration" :options="durationOptions" />
+        </label>
+        <Button icon="pi pi-check" label="Сохранить слот" @click="saveSlot" />
+      </div>
+    </Dialog>
+
+    <Dialog v-model:visible="addDaySlotDialogOpen" class="moto-dialog" header="Добавить слоты на день" modal
+    :draggable="false">
+      <div class="form-stack">
+        <label>
+          Дата
+          <DatePicker v-model="daySlotForm.dateValue" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon />
+        </label>
+        <label>
+          Время начала
+          <DatePicker v-model="daySlotForm.timeStart" :minDate="new Date(Date.now())" date-format="dd.mm.yy" :timeOnly="true" />
+        </label>
+        <label>
+          Время окончания
+          <DatePicker v-model="daySlotForm.timeEnd" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon selection-mode="range" :timeOnly="true" />
+        </label>
+        <label>
+          Длительность
+          <Select v-model="daySlotForm.duration" :options="durationOptions" />
         </label>
         <Button icon="pi pi-check" label="Сохранить слот" @click="saveSlot" />
       </div>
