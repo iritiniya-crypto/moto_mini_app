@@ -18,8 +18,9 @@ const addOneSlotDialogOpen = ref(false)
 const addDaySlotDialogOpen = ref(false)
 const editingSlotId = ref<number | null>(null)
 const durationOptions = ['30 мин', '60 мин', '90 мин', '120 мин']
-const tomorrowAtNine = dayjs().add(1, 'day').set('hour', 9).startOf('hour');
-const tomorrowAt17 = dayjs().add(1, 'day').set('hour', 17).startOf('hour');  
+const minSelectableDate = dayjs().startOf('day').toDate()
+const tomorrowAtNine = dayjs().add(1, 'day').set('hour', 9).startOf('hour')
+const tomorrowAt17 = dayjs().add(1, 'day').set('hour', 17).startOf('hour')
 const oneSlotForm = ref({
   dateValue: new Date(),
   timeValue: '11:30',
@@ -31,6 +32,7 @@ const daySlotForm = ref({
   timeEnd: tomorrowAt17.toDate(),
   duration: '60 мин',
 })
+const daySlotMessage = ref('')
 const bookedSlotId = ref<number | null>(null)
 const visibleSlots = computed(() =>
   props.role === 'instructor' ? bookingManagementSlots.value : availableSlots.value,
@@ -89,6 +91,26 @@ function parseSlotDate(value: string) {
   return new Date(2026, monthMap[month] ?? 4, Number(day) || 1)
 }
 
+function formatTime(value: Date) {
+  return new Intl.DateTimeFormat('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(value)
+}
+
+function dateWithTime(date: Date, time: Date) {
+  return dayjs(date)
+    .hour(time.getHours())
+    .minute(time.getMinutes())
+    .second(0)
+    .millisecond(0)
+}
+
+function durationMinutes(value: string) {
+  return Number.parseInt(value, 10) || 60
+}
+
 function openAddSlot() {
   editingSlotId.value = null
   oneSlotForm.value = {
@@ -100,6 +122,13 @@ function openAddSlot() {
 }
 
 function openAddDaySlot() {
+  daySlotForm.value = {
+    dateValue: tomorrowAtNine.toDate(),
+    timeStart: tomorrowAtNine.toDate(),
+    timeEnd: tomorrowAt17.toDate(),
+    duration: '60 мин',
+  }
+  daySlotMessage.value = ''
   addDaySlotDialogOpen.value = true
 }
 
@@ -116,6 +145,17 @@ function openEditSlot(slot: BookingSlot) {
 
 async function saveSlot() {
   const currentSlot = editingSlotId.value ? slots.value.find((slot) => slot.id === editingSlotId.value) : null
+  const [hours, minutes] = oneSlotForm.value.timeValue.split(':').map(Number)
+  const slotDateTime = dayjs(oneSlotForm.value.dateValue)
+    .hour(hours || 0)
+    .minute(minutes || 0)
+    .second(0)
+    .millisecond(0)
+
+  if (slotDateTime.isBefore(dayjs())) {
+    return
+  }
+
   const nextSlot = {
     date: formatDate(oneSlotForm.value.dateValue),
     time: oneSlotForm.value.timeValue,
@@ -130,6 +170,44 @@ async function saveSlot() {
   }
   await loadAllBookingSlots()
   addOneSlotDialogOpen.value = false
+}
+
+async function saveDaySlots() {
+  daySlotMessage.value = ''
+
+  const start = dateWithTime(daySlotForm.value.dateValue, daySlotForm.value.timeStart)
+  const end = dateWithTime(daySlotForm.value.dateValue, daySlotForm.value.timeEnd)
+  const stepMinutes = durationMinutes(daySlotForm.value.duration)
+
+  if (!end.isAfter(start)) {
+    daySlotMessage.value = 'Время окончания должно быть позже времени начала.'
+    return
+  }
+
+  const slotsToCreate: Omit<BookingSlot, 'id'>[] = []
+  let cursor = start
+
+  while (cursor.add(stepMinutes, 'minute').valueOf() <= end.valueOf()) {
+    if (!cursor.isBefore(dayjs())) {
+      slotsToCreate.push({
+        date: formatDate(cursor.toDate()),
+        time: formatTime(cursor.toDate()),
+        duration: daySlotForm.value.duration,
+        status: 'available',
+      })
+    }
+
+    cursor = cursor.add(stepMinutes, 'minute')
+  }
+
+  if (slotsToCreate.length === 0) {
+    daySlotMessage.value = 'В выбранном диапазоне нет будущих слотов.'
+    return
+  }
+
+  await Promise.all(slotsToCreate.map((slot) => addSlot(slot)))
+  await loadAllBookingSlots()
+  addDaySlotDialogOpen.value = false
 }
 
 async function bookSlot(slot: BookingSlot) {
@@ -225,7 +303,7 @@ onMounted(() => {
       <div class="form-stack">
         <label>
           Дата
-          <DatePicker v-model="oneSlotForm.dateValue" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon />
+          <DatePicker v-model="oneSlotForm.dateValue" :minDate="minSelectableDate" date-format="dd.mm.yy" show-icon />
         </label>
         <label>
           Время
@@ -244,21 +322,22 @@ onMounted(() => {
       <div class="form-stack">
         <label>
           Дата
-          <DatePicker v-model="daySlotForm.dateValue" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon />
+          <DatePicker v-model="daySlotForm.dateValue" :minDate="minSelectableDate" date-format="dd.mm.yy" show-icon />
         </label>
         <label>
           Время начала
-          <DatePicker v-model="daySlotForm.timeStart" :minDate="new Date(Date.now())" date-format="dd.mm.yy" :timeOnly="true" />
+          <DatePicker v-model="daySlotForm.timeStart" hour-format="24" time-only />
         </label>
         <label>
           Время окончания
-          <DatePicker v-model="daySlotForm.timeEnd" :minDate="new Date(Date.now())" date-format="dd.mm.yy" show-icon selection-mode="range" :timeOnly="true" />
+          <DatePicker v-model="daySlotForm.timeEnd" hour-format="24" time-only />
         </label>
         <label>
           Длительность
           <Select v-model="daySlotForm.duration" :options="durationOptions" />
         </label>
-        <Button icon="pi pi-check" label="Сохранить слот" @click="saveSlot" />
+        <p v-if="daySlotMessage" class="status-message">{{ daySlotMessage }}</p>
+        <Button icon="pi pi-check" label="Сохранить слоты" @click="saveDaySlots" />
       </div>
     </Dialog>
   </section>
