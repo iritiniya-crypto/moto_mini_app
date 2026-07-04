@@ -33,7 +33,8 @@ const studentsStore = useStudentsStore()
 const userStore = useUserStore()
 const currentStudent = computed(() => props.student || userStore.profile || null)
 
-const selectedSkills = ref<Skill[]>([])
+const selectedSkillIds = ref<number[]>([])
+const skillProgressDraft = ref<Record<number, number>>({})
 const skillImprovements = ref<Record<string, string>>({})
 const improved = ref('')
 const nextFocus = ref('')
@@ -46,7 +47,8 @@ watch(
   () => [props.open, currentStudent.value],
   () => {
     if (props.open && currentStudent.value) {
-      selectedSkills.value = []
+      selectedSkillIds.value = []
+      skillProgressDraft.value = {}
       skillImprovements.value = {}
       improved.value = ''
       nextFocus.value = ''
@@ -57,14 +59,27 @@ watch(
   { immediate: true },
 )
 
-watch(selectedSkills, (skills) => {
-  const nextImprovements: Record<number, string> = {}
+const selectedSkills = computed(() =>
+  availableSkills.value.filter((skill) => selectedSkillIds.value.includes(skill.id)),
+)
 
-  skills.forEach((skill) => {
+watch(selectedSkillIds, (skillIds) => {
+  const nextImprovements: Record<number, string> = {}
+  const nextProgressDraft: Record<number, number> = {}
+
+  skillIds.forEach((skillId) => {
+    const skill = availableSkills.value.find((item) => item.id === skillId)
+
+    if (!skill) {
+      return
+    }
+
     nextImprovements[skill.id] = skillImprovements.value[skill.id] || 'Без изменений'
+    nextProgressDraft[skill.id] = skillProgressDraft.value[skill.id] ?? skill.oldValue
   })
 
   skillImprovements.value = nextImprovements
+  skillProgressDraft.value = nextProgressDraft
 })
 
 const durationMinutes = computed(() => {
@@ -106,7 +121,7 @@ function buildUpdatedStudentSkills() {
       return { ...skill }
     }
 
-    const progressPercent = Number(selectedSkill.newValue ?? selectedSkill.oldValue)
+    const progressPercent = Number(skillProgressDraft.value[selectedSkill.id] ?? selectedSkill.oldValue)
 
     return {
       ...skill,
@@ -164,7 +179,7 @@ async function saveReport() {
         skillUpdates: Object.fromEntries(
           selectedSkills.value.map((skill) => [
             skill.id,
-            String(skill.newValue ?? skill.oldValue),
+            String(skillProgressDraft.value[skill.id] ?? skill.oldValue),
           ]),
         ),
         levelUpdate: levelUpdate.value && levelUpdate.value !== currentStudent.value.level ? levelUpdate.value : undefined,
@@ -253,7 +268,7 @@ watch(
         <label class="field-label">Что тренировали</label>
         <div class="skill-check-grid">
           <label v-for="skill in availableSkills" :key="skill.id" class="skill-check-item">
-            <input v-model="selectedSkills" :value="skill" type="checkbox" />
+            <input v-model="selectedSkillIds" :value="skill.id" type="checkbox" />
             <span>{{ skill.name }}</span>
           </label>
         </div>
@@ -286,7 +301,7 @@ watch(
             <span>{{ skill.name }}</span>
             <strong>{{ skill.oldValue }}%</strong>
             <input
-                v-model.number="skill.newValue"
+                v-model.number="skillProgressDraft[skill.id]"
                 class="skill-percent-input"
                 max="100"
                 min="0"
