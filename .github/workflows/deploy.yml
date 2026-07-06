@@ -20,15 +20,15 @@ jobs:
           script: |
             set -e
 
-            echo "🚀 Pull frontend repo"
+            echo "🚀 Pull frontend"
             cd /opt/apps/moto_instructor_app/frontend
             git pull origin main
 
-            echo "📦 Rebuild frontend container"
+            echo "📦 Build frontend image"
             cd /opt/apps/moto_instructor_app
             docker compose build frontend
 
-            echo "🔄 Restart frontend + caddy"
-            docker compose up -d frontend caddy
+            echo "🔄 Restart frontend"
+            docker compose up -d --force-recreate frontend
 
-            echo "✅ Frontend deployed successfully"
+            echo "✅ Frontend deployed"
