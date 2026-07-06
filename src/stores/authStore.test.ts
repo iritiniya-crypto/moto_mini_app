@@ -110,6 +110,18 @@ describe('useAuthStore', () => {
         telegramUsername: 'test_user',
         displayName: 'Test User',
         avatar: 'https://t.me/avatar.jpg'
+      },
+      student: {
+        id: 'student-123',
+        userId: 'user-123',
+        name: 'Test User',
+        level: 'BEGINNER',
+        focus: '',
+        nextTrainingPlan: '',
+        notes: '',
+        avatar: 'https://t.me/avatar.jpg',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z'
       }
     }
 
@@ -150,7 +162,21 @@ describe('useAuthStore', () => {
     const mockResponse = {
       token: 'jwt-token',
       studentId: 'student-123',
-      user: { id: 'user-123', telegramId: 123456789, displayName: 'Test' }
+      user: { 
+        id: 'user-123', 
+        telegramId: 123456789, 
+        displayName: 'Test',
+        avatar: undefined
+      },
+      student: {
+        id: 'student-123',
+        userId: 'user-123',
+        name: 'Test',
+        level: 'BEGINNER',
+        avatar: '',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z'
+      }
     }
 
     vi.mocked(authenticateWithTelegram).mockImplementationOnce(() => {
