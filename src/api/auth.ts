@@ -13,5 +13,5 @@ export interface AuthResponse {
 }
 
 export async function authenticateWithTelegram(initData: string): Promise<AuthResponse> {
-  return postJson<AuthResponse>('/auth/telegram', { initData })
+  return postJson<AuthResponse>('api/auth/telegram', { initData })
 }
