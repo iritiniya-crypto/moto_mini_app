@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { authenticateWithTelegram, type AuthResponse } from '@/api/auth'
 import { setAuthToken } from '@/api/client'
 import {useUserStore} from "@/stores/userStore.ts";
+import {normalizeStudent} from "@/api/normalizers.ts";
 
 const STORAGE_KEY = 'auth_token'
 const STUDENT_ID_KEY = 'student_id'
@@ -60,9 +61,8 @@ export const useAuthStore = defineStore('auth', () => {
       setAvatar(response.user.avatar)
       user.value = response.user
 
-      // Save student profile to students store
       const userStore = useUserStore()
-      userStore.profile = response.student
+      userStore.profile = normalizeStudent(response.student)
 
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Authentication failed'
