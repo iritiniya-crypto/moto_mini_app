@@ -24,17 +24,20 @@ describe('useAuthStore', () => {
     const store = useAuthStore()
     expect(store.token).toBeNull()
     expect(store.studentId).toBeNull()
+    expect(store.avatar).toBeNull()
     expect(store.user).toBeNull()
     expect(store.isAuthenticated).toBe(false)
   })
 
-  it('should restore token from localStorage', () => {
+  it('should restore token and avatar from localStorage', () => {
     localStorage.setItem('auth_token', 'test-token')
     localStorage.setItem('student_id', 'test-student-id')
+    localStorage.setItem('student_avatar', 'https://t.me/avatar.jpg')
     
     const store = useAuthStore()
     expect(store.token).toBe('test-token')
     expect(store.studentId).toBe('test-student-id')
+    expect(store.avatar).toBe('https://t.me/avatar.jpg')
   })
 
   it('should mark as authenticated when token and studentId exist', () => {
@@ -65,19 +68,39 @@ describe('useAuthStore', () => {
   it('should clear auth data', () => {
     localStorage.setItem('auth_token', 'test-token')
     localStorage.setItem('student_id', 'test-student-id')
+    localStorage.setItem('student_avatar', 'https://t.me/avatar.jpg')
     
     const store = useAuthStore()
     store.clearAuth()
     
     expect(store.token).toBeNull()
     expect(store.studentId).toBeNull()
+    expect(store.avatar).toBeNull()
     expect(store.user).toBeNull()
     expect(localStorage.getItem('auth_token')).toBeNull()
     expect(localStorage.getItem('student_id')).toBeNull()
+    expect(localStorage.getItem('student_avatar')).toBeNull()
     expect(setAuthToken).toHaveBeenCalledWith(null)
   })
 
-  it('should login with Telegram', async () => {
+  it('should set avatar and save to localStorage', () => {
+    const store = useAuthStore()
+    store.setAvatar('https://t.me/avatar.jpg')
+    
+    expect(store.avatar).toBe('https://t.me/avatar.jpg')
+    expect(localStorage.getItem('student_avatar')).toBe('https://t.me/avatar.jpg')
+  })
+
+  it('should remove avatar from localStorage when set to null', () => {
+    localStorage.setItem('student_avatar', 'https://t.me/avatar.jpg')
+    const store = useAuthStore()
+    store.setAvatar(null)
+    
+    expect(store.avatar).toBeNull()
+    expect(localStorage.getItem('student_avatar')).toBeNull()
+  })
+
+  it('should login with Telegram and store avatar', async () => {
     const mockResponse = {
       token: 'jwt-token',
       studentId: 'student-123',
@@ -85,7 +108,8 @@ describe('useAuthStore', () => {
         id: 'user-123',
         telegramId: 123456789,
         telegramUsername: 'test_user',
-        displayName: 'Test User'
+        displayName: 'Test User',
+        avatar: 'https://t.me/avatar.jpg'
       }
     }
 
@@ -96,12 +120,15 @@ describe('useAuthStore', () => {
 
     expect(store.token).toBe('jwt-token')
     expect(store.studentId).toBe('student-123')
+    expect(store.avatar).toBe('https://t.me/avatar.jpg')
     expect(store.user).toEqual(mockResponse.user)
     expect(localStorage.getItem('auth_token')).toBe('jwt-token')
     expect(localStorage.getItem('student_id')).toBe('student-123')
+    expect(localStorage.getItem('student_avatar')).toBe('https://t.me/avatar.jpg')
   })
 
-  it('should handle login error', async () => {
+  it('should handle login error and clear avatar', async () => {
+    localStorage.setItem('student_avatar', 'https://t.me/avatar.jpg')
     const error = new Error('Auth failed')
     vi.mocked(authenticateWithTelegram).mockRejectedValueOnce(error)
 
@@ -115,6 +142,7 @@ describe('useAuthStore', () => {
 
     expect(store.token).toBeNull()
     expect(store.studentId).toBeNull()
+    expect(store.avatar).toBeNull()
     expect(store.error).toBe('Auth failed')
   })
 

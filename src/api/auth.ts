@@ -8,6 +8,7 @@ export interface AuthResponse {
     telegramId: number
     telegramUsername?: string
     displayName: string
+    avatar?: string
   }
 }
 

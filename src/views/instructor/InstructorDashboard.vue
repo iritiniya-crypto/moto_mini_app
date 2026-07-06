@@ -70,6 +70,11 @@ function studentForSlot(slot: BookingSlot) {
   )
 }
 
+function studentAvatarForSlot(slot: BookingSlot) {
+  const student = studentForSlot(slot)
+  return student?.avatar || 'student-avatar.png'
+}
+
 function packageTextForSlot(slot: BookingSlot) {
   const student = studentForSlot(slot)
   const trainingPackage = student?.trainingPackage
@@ -160,13 +165,13 @@ async function loadCalendarHistories() {
 
 const requests = computed(() =>
   requestedSlots.value.map((slot) => {
-    return { ...slot, student: studentName(slot), packageText: packageTextForSlot(slot) }
+    return { ...slot, student: studentName(slot), packageText: packageTextForSlot(slot), avatar: studentAvatarForSlot(slot) }
   })
 )
 
 const reschedules = computed(() =>
   rescheduleSlots.value.map((slot) => {
-    return { ...slot, student: studentName(slot) }
+    return { ...slot, student: studentName(slot), avatar: studentAvatarForSlot(slot) }
   })
 )
 
@@ -378,7 +383,7 @@ onMounted(async () => {
             <div class="booking-request-content">
               <div class="booking-request-top">
                 <div class="booking-request-avatar-cell">
-                  <Avatar class="student-request-avatar" image="student-avatar.png" shape="circle" size="large" />
+                  <Avatar class="student-request-avatar" :image="request.avatar" shape="circle" size="large" />
                 </div>
                 <div class="booking-request-details">
                   <h3>{{ request.student }}</h3>
@@ -420,7 +425,7 @@ onMounted(async () => {
         <Card v-for="move in reschedules" :key="move.id" class="request-card">
           <template #content>
             <div class="request-top">
-              <Avatar class="student-request-avatar" image="student-avatar.png" shape="circle" size="large" />
+              <Avatar class="student-request-avatar" :image="move.avatar" shape="circle" size="large" />
               <div>
                 <h3>{{ move.student }}</h3>
                 <span>{{ rescheduleTimeText(move) }} · {{ durationText(move.duration) }}</span>

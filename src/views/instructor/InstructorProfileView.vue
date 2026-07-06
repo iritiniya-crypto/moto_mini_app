@@ -586,7 +586,7 @@ function removeSkill(id: number) {
         >
           <template #content>
             <div class="student-top">
-              <Avatar image="student-avatar.png" shape="circle"/>
+              <Avatar :image="student.avatar || 'student-avatar.png'" shape="circle"/>
               <div>
                 <h3>{{ student.name }}</h3>
                 <span>{{ student.level }} · {{ student.completedTrainingsCount }} тренировок</span>
@@ -625,7 +625,7 @@ function removeSkill(id: number) {
         <div class="student-dialog-header">
           <div style="display: flex; gap: 2rem;">
             <div style="display: flex; align-items: center; justify-content: center">
-              <Avatar image="student-avatar.png" shape="circle" size="large" style="width: 100px; height: 100px;"/>
+              <Avatar :image="selectedStudent.avatar || 'student-avatar.png'" shape="circle" size="large" style="width: 100px; height: 100px;"/>
             </div>
           </div>
           <div style="display: flex; gap: 1rem; flex-direction: column; align-items: flex-end; justify-content: flex-start">

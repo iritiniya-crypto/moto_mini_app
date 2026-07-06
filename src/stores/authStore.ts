@@ -5,10 +5,12 @@ import { setAuthToken } from '@/api/client'
 
 const STORAGE_KEY = 'auth_token'
 const STUDENT_ID_KEY = 'student_id'
+const AVATAR_KEY = 'student_avatar'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(STORAGE_KEY))
   const studentId = ref<string | null>(localStorage.getItem(STUDENT_ID_KEY))
+  const avatar = ref<string | null>(localStorage.getItem(AVATAR_KEY))
   const user = ref<AuthResponse['user'] | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -26,12 +28,23 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem(STUDENT_ID_KEY, id)
   }
 
+  function setAvatar(avatarUrl: string | null | undefined) {
+    avatar.value = avatarUrl || null
+    if (avatarUrl) {
+      localStorage.setItem(AVATAR_KEY, avatarUrl)
+    } else {
+      localStorage.removeItem(AVATAR_KEY)
+    }
+  }
+
   function clearAuth() {
     token.value = null
     studentId.value = null
+    avatar.value = null
     user.value = null
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(STUDENT_ID_KEY)
+    localStorage.removeItem(AVATAR_KEY)
     setAuthToken(null)
   }
 
@@ -43,6 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authenticateWithTelegram(initData)
       setToken(response.token)
       setStudentId(response.studentId)
+      setAvatar(response.user.avatar)
       user.value = response.user
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Authentication failed'
@@ -62,12 +76,14 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     token,
     studentId,
+    avatar,
     user,
     isLoading,
     error,
     isAuthenticated,
     setToken,
     setStudentId,
+    setAvatar,
     clearAuth,
     loginWithTelegram
   }

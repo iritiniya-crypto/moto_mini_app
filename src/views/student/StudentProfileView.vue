@@ -5,6 +5,7 @@ import MetricCard from '@/components/MetricCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import SkillProgress from '@/components/SkillProgress.vue'
 import {useUserStore} from '@/stores/userStore.ts'
+import {useAuthStore} from '@/stores/authStore.ts'
 import type {PaymentStatus} from '@/types/package'
 import type {TrainingHistory} from '@/types/training'
 import {packageNameForStudent} from '@/utils/trainingPackageName'
@@ -14,6 +15,7 @@ defineProps<{
 }>()
 
 const userStore = useUserStore()
+const authStore = useAuthStore()
 const {
   profile: apiProfile,
   isProfileLoading,
@@ -21,6 +23,7 @@ const {
 } = storeToRefs(userStore)
 
 const studentProfile = computed(() => apiProfile.value)
+const studentAvatar = computed(() => authStore.avatar)
 const studentTrainingHistory = computed(() => studentProfile.value?.trainingHistory || [])
 const studentSkills = computed(() => studentProfile.value?.skills || [])
 const studentPackage = computed(
@@ -60,7 +63,7 @@ onMounted(() => {
     <Card class="hero-card profile">
       <template #content>
         <div class="student-top">
-          <Avatar image="student-avatar.png" shape="circle" size="xlarge" style="width: 115px; height: 115px;"/>
+          <Avatar :image="studentAvatar || 'student-avatar.png'" shape="circle" size="xlarge" style="width: 115px; height: 115px;"/>
           <div style="display: flex; flex-direction: column; align-items: flex-end">
             <h1>{{ studentProfile?.name }}</h1>
             <p>Уровень: {{ studentProfile?.level }}</p>
