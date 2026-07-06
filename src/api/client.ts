@@ -18,6 +18,15 @@ export const apiClient = axios.create({
   },
 })
 
+// Add token to headers if available
+export function setAuthToken(token: string | null) {
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  } else {
+    delete apiClient.defaults.headers.common['Authorization']
+  }
+}
+
 export class ApiError extends Error {
   readonly status?: number
 
