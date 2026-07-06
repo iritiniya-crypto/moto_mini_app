@@ -9,10 +9,23 @@ import StudentDashboard from './views/student/StudentDashboard.vue'
 import VideosView from './views/VideosView.vue'
 import InstructorProfileView from "./views/instructor/InstructorProfileView.vue";
 import { useAuthStore } from './stores/authStore'
-import WebApp from '@twa-dev/sdk'
 
 type Role = 'student' | 'instructor'
 type Tab = 'home' | 'lessons' | 'videos' | 'profile'
+
+// Declare Telegram WebApp type
+declare global {
+  interface Window {
+    Telegram: {
+      WebApp: {
+        initData: string
+        ready: () => void
+        expand: () => void
+        enableClosingConfirmation: () => void
+      }
+    }
+  }
+}
 
 const authStore = useAuthStore()
 const activeRole = ref<Role>('student')
@@ -20,43 +33,50 @@ const activeTab = ref<Tab>('home')
 const isInitializing = ref(true)
 const initError = ref<string | null>(null)
 
-// Helper to wait for Telegram WebApp to be ready
-async function waitForTelegramWebApp(maxAttempts = 50, delayMs = 100): Promise<string> {
+// Helper to get Telegram WebApp
+function getTelegramWebApp() {
+  if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+    return window.Telegram.WebApp
+  }
+  return null
+}
+
+// Wait for Telegram to provide initData
+async function getTelegramInitData(maxAttempts = 50, delayMs = 100): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
-    const initData = WebApp.initData
-    if (initData) {
-      return initData
+    const webApp = getTelegramWebApp()
+    if (webApp?.initData) {
+      console.log('✅ Telegram initData received')
+      return webApp.initData
     }
-    // Wait a bit before trying again
+    if (i === 0) {
+      console.log('⏳ Waiting for Telegram WebApp...')
+    }
     await new Promise(resolve => setTimeout(resolve, delayMs))
   }
   throw new Error('Telegram initData not available. Make sure app is opened from Telegram Mini App.')
-}
-
-function retryAuth() {
-  window.location.reload()
 }
 
 onMounted(async () => {
   try {
     // Skip auth if already authenticated
     if (authStore.isAuthenticated) {
+      console.log('✅ Already authenticated')
       isInitializing.value = false
       return
     }
 
-    // Wait for Telegram WebApp to provide initData
-    console.log('Waiting for Telegram WebApp initData...')
-    const initData = await waitForTelegramWebApp()
-    console.log('Telegram initData received, authenticating...')
+    // Get Telegram initData
+    const initData = await getTelegramInitData()
+    console.log('🔐 Authenticating...')
 
     // Authenticate with Telegram
     await authStore.loginWithTelegram(initData)
-    console.log('Authentication successful')
+    console.log('✅ Authentication successful')
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Authentication failed'
     initError.value = message
-    console.error('Auth initialization error:', message, error)
+    console.error('❌ Auth error:', message, error)
   } finally {
     isInitializing.value = false
   }
@@ -87,6 +107,10 @@ const currentView = computed(() => {
 
   return InstructorProfileView
 })
+
+function retryAuth() {
+  window.location.reload()
+}
 </script>
 
 <template>
