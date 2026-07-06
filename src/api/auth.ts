@@ -1,4 +1,5 @@
 import { postJson } from './client'
+import type {Student} from "@/types";
 
 export interface AuthResponse {
   token: string
@@ -10,18 +11,7 @@ export interface AuthResponse {
     displayName: string
     avatar?: string
   }
-  student: {
-    id: string
-    userId: string
-    name: string
-    level: string
-    focus?: string
-    nextTrainingPlan?: string
-    notes?: string
-    avatar?: string
-    createdAt: string
-    updatedAt: string
-  }
+  student: Student
 }
 
 export async function authenticateWithTelegram(initData: string): Promise<AuthResponse> {

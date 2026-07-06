@@ -2,8 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authenticateWithTelegram, type AuthResponse } from '@/api/auth'
 import { setAuthToken } from '@/api/client'
-import { useStudentsStore } from './studentsStore'
-import type { Student } from '@/types/student'
+import {useUserStore} from "@/stores/userStore.ts";
 
 const STORAGE_KEY = 'auth_token'
 const STUDENT_ID_KEY = 'student_id'
@@ -62,31 +61,9 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = response.user
 
       // Save student profile to students store
-      const studentsStore = useStudentsStore()
-      const studentProfile: Student = {
-        id: response.student.id,
-        apiId: response.student.id,
-        name: response.student.name,
-        status: 'ACTIVE',
-        level: response.student.level,
-        completedTrainingsCount: 0,
-        nextLesson: '',
-        avatar: response.student.avatar || '',
-        focus: response.student.focus || '',
-        telegramUsername: response.user.telegramUsername,
-        createdAt: response.student.createdAt,
-        updatedAt: response.student.updatedAt
-      }
-      
-      // Add or update student in the store
-      const existingIndex = studentsStore.students.findIndex(s => s.id === response.student.id)
-      if (existingIndex >= 0) {
-        studentsStore.students[existingIndex] = studentProfile
-      } else {
-        studentsStore.students.push(studentProfile)
-      }
-      
-      console.log('[AUTH] Student profile saved to store:', response.student.id)
+      const userStore = useUserStore()
+      userStore.profile = response.student
+
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Authentication failed'
       error.value = errorMessage
