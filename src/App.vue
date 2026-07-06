@@ -60,11 +60,11 @@ async function getTelegramInitData(maxAttempts = 50, delayMs = 100): Promise<str
 onMounted(async () => {
   try {
     // Skip auth if already authenticated
-    if (authStore.isAuthenticated) {
-      console.log('✅ Already authenticated')
-      isInitializing.value = false
-      return
-    }
+    // if (authStore.isAuthenticated) {
+    //   console.log('✅ Already authenticated')
+    //   isInitializing.value = false
+    //   return
+    // }
 
     // Get Telegram initData
     const initData = await getTelegramInitData()
@@ -134,7 +134,7 @@ function retryAuth() {
           <li>Убедитесь, что Telegram WebApp SDK загружен</li>
         </ul>
       </div>
-      <button 
+      <button
         type="button"
         @click="retryAuth"
         style="
