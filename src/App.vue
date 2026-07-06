@@ -20,6 +20,23 @@ const activeTab = ref<Tab>('home')
 const isInitializing = ref(true)
 const initError = ref<string | null>(null)
 
+// Helper to wait for Telegram WebApp to be ready
+async function waitForTelegramWebApp(maxAttempts = 50, delayMs = 100): Promise<string> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const initData = WebApp.initData
+    if (initData) {
+      return initData
+    }
+    // Wait a bit before trying again
+    await new Promise(resolve => setTimeout(resolve, delayMs))
+  }
+  throw new Error('Telegram initData not available. Make sure app is opened from Telegram Mini App.')
+}
+
+function retryAuth() {
+  window.location.reload()
+}
+
 onMounted(async () => {
   try {
     // Skip auth if already authenticated
@@ -28,18 +45,18 @@ onMounted(async () => {
       return
     }
 
-    // Get Telegram initData
-    const initData = WebApp.initData
-    if (!initData) {
-      throw new Error('Telegram initData not available. Make sure app is opened from Telegram.')
-    }
+    // Wait for Telegram WebApp to provide initData
+    console.log('Waiting for Telegram WebApp initData...')
+    const initData = await waitForTelegramWebApp()
+    console.log('Telegram initData received, authenticating...')
 
     // Authenticate with Telegram
     await authStore.loginWithTelegram(initData)
+    console.log('Authentication successful')
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Authentication failed'
     initError.value = message
-    console.error('Auth initialization error:', message)
+    console.error('Auth initialization error:', message, error)
   } finally {
     isInitializing.value = false
   }
@@ -74,10 +91,42 @@ const currentView = computed(() => {
 
 <template>
   <div v-if="isInitializing" class="loading-container">
-    <p>Инициализация...</p>
+    <div>
+      <p>Инициализация...</p>
+      <small style="color: #666; margin-top: 10px;">Подключение к Telegram...</small>
+    </div>
   </div>
   <div v-else-if="initError" class="error-container">
-    <p>Ошибка авторизации: {{ initError }}</p>
+    <div>
+      <p>❌ Ошибка авторизации:</p>
+      <p style="margin-top: 10px; font-size: 14px;">{{ initError }}</p>
+      <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+      <div style="font-size: 12px; color: #666; text-align: left;">
+        <p><strong>Решение:</strong></p>
+        <ul style="margin: 5px 0; padding-left: 20px;">
+          <li>Убедитесь, что открываете приложение через Telegram Mini App</li>
+          <li>Попробуйте закрыть и переоткрыть приложение</li>
+          <li>Проверьте консоль браузера (F12) для деталей ошибки</li>
+          <li>Убедитесь, что Telegram WebApp SDK загружен</li>
+        </ul>
+      </div>
+      <button 
+        type="button"
+        @click="retryAuth"
+        style="
+          margin-top: 20px;
+          padding: 10px 20px;
+          background: #0088cc;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+        "
+      >
+        🔄 Попробовать снова
+      </button>
+    </div>
   </div>
   <AppShell v-else v-model:role="activeRole" v-model:tab="activeTab">
     <component :is="currentView" :role="activeRole" />

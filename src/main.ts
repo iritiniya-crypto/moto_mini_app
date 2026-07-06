@@ -22,6 +22,31 @@ import Aura from '@primeuix/themes/aura';
 import './style.css'
 import {MultiSelect} from "primevue";
 
+// Initialize Telegram WebApp
+try {
+  if (typeof WebApp !== 'undefined') {
+    console.log('Initializing Telegram WebApp...')
+    
+    if (typeof WebApp.ready === 'function') {
+      WebApp.ready()
+      console.log('WebApp ready called')
+    }
+    
+    if (typeof WebApp.expand === 'function') {
+      WebApp.expand()
+      console.log('WebApp expand called')
+    }
+    
+    // Enable closing confirm
+    if (typeof WebApp.enableClosingConfirmation === 'function') {
+      WebApp.enableClosingConfirmation()
+    }
+    
+    console.log('WebApp initData:', WebApp.initData ? 'available' : 'not yet available')
+  }
+} catch (error) {
+  console.warn('Telegram WebApp initialization warning:', error)
+}
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -52,11 +77,3 @@ app.component('Textarea', Textarea)
 app.component('MultiSelect', MultiSelect)
 
 app.mount('#app')
-
-if (typeof WebApp.ready === 'function') {
-  WebApp.ready()
-}
-
-if (typeof WebApp.expand === 'function') {
-  WebApp.expand()
-}
