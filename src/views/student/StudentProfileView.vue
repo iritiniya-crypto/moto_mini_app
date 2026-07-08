@@ -38,7 +38,6 @@ const studentPackageText = computed(() => `${studentPackage.value.completed} / $
 const studentPackageName = computed(() =>
   studentProfile.value?.trainingPackage ? packageNameForStudent(studentProfile.value) : 'Пакет не выбран',
 )
-const studentPackageMetric = computed(() => `${studentPackageName.value} · ${studentPackageText.value}`)
 const selectedTrainingHistory = ref<TrainingHistory | null>(null)
 const trainingDetailsOpen = ref(false)
 
@@ -81,7 +80,14 @@ onMounted(() => {
     <div class="metric-grid">
       <MetricCard :value="studentProfile?.completedTrainingsCount || 0" hint="в журнале" label="Тренировок" />
       <MetricCard :value="studentProfile?.level || 0" hint="текущий" label="Уровень" />
-      <MetricCard :hint="studentPackage.paymentStatus" :value="studentPackageMetric" label="Пакет" />
+      <Card class="metric-card package-metric-card">
+        <template #content>
+          <span>Пакет</span>
+          <strong>{{ studentPackageName }}</strong>
+          <b>{{ studentPackageText }}</b>
+          <small>{{ studentPackage.paymentStatus }}</small>
+        </template>
+      </Card>
     </div>
 
     <section>

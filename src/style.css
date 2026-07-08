@@ -335,6 +335,19 @@ p {
   line-height: 1;
 }
 
+.package-metric-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.package-metric-card b {
+  display: block;
+  margin-top: 4px;
+  font-size: 2rem;
+  line-height: 1;
+}
+
 .metric-card small {
   color: var(--dim);
 }

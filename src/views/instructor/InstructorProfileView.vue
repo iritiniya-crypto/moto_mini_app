@@ -777,15 +777,6 @@ function removeSkill(id: number) {
           </div>
         </div>
         <a
-          v-if="selectedTrainingHistory.locationUrl"
-          :href="selectedTrainingHistory.locationUrl"
-          class="location-link"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Открыть локацию
-        </a>
-        <a
           v-if="selectedTrainingHistory.videoUrl"
           :href="selectedTrainingHistory.videoUrl"
           class="location-link"

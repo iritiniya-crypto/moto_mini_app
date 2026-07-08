@@ -157,7 +157,6 @@ export const useStudentsStore = defineStore('students', () => {
   }
 
   async function saveStudentSkills(student: Student, skills: NonNullable<Student['skills']>) {
-    console.log('saveStudentSkills', { student, skills })
     try {
       const payload = skillsToPayload(skills)
 
@@ -166,14 +165,16 @@ export const useStudentsStore = defineStore('students', () => {
       }
 
       const response = await updateStudentSkillsApi(student.apiId, payload)
-      const savedSkills = normalizeSkillDefinitions(response)
+      const freshPayload = await fetchStudentSkills(student.apiId)
+      const freshSkills = normalizeSkillDefinitions(freshPayload)
+      const savedSkills = freshSkills.length ? freshSkills : normalizeSkillDefinitions(response)
+
       replaceStudent(student.id, { skills: savedSkills })
       usingFallback.value = false
       return savedSkills
     } catch {
       usingFallback.value = true
       error.value = 'Backend skills недоступен, навыки не сохранены.'
-      return student.skills
     }
   }
 

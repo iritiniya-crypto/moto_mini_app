@@ -66,6 +66,12 @@ onMounted(async () => {
     //   return
     // }
 
+    if (import.meta.env.VITE_APP_DEV_MODE === 'true') {
+      console.log('⚠️ Dev mode enabled, skipping Telegram auth')
+      isInitializing.value = false
+      return
+    }
+
     // Get Telegram initData
     const initData = await getTelegramInitData()
     console.log('🔐 Authenticating...')

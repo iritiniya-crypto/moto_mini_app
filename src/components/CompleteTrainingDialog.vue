@@ -110,18 +110,26 @@ function initializeSkillImprovements() {
   skillImprovements.value = { ...skillImprovements.value, ...improvements }
 }
 
-function buildUpdatedStudentSkills() {
-  const currentSkills = currentStudent.value?.skills || []
-  const selectedById = new Map(selectedSkills.value.map((skill) => [skill.id, skill]))
+function selectedSkillDrafts() {
+  return selectedSkills.value.map((skill) => ({
+    id: skill.id,
+    name: skill.name,
+    progress: Number(skillProgressDraft.value[skill.id] ?? skill.oldValue),
+  }))
+}
 
-  return currentSkills.map((skill) => {
-    const selectedSkill = selectedById.get(skill.id)
+function buildUpdatedStudentSkills(sourceSkills = currentStudent.value?.skills || [], drafts = selectedSkillDrafts()) {
+  const draftById = new Map(drafts.map((skill) => [skill.id, skill]))
+  const draftByName = new Map(drafts.map((skill) => [skill.name, skill]))
+
+  return sourceSkills.map((skill) => {
+    const selectedSkill = draftById.get(skill.id) ?? draftByName.get(skill.name)
 
     if (!selectedSkill) {
       return { ...skill }
     }
 
-    const progressPercent = Number(skillProgressDraft.value[selectedSkill.id] ?? selectedSkill.oldValue)
+    const progressPercent = selectedSkill.progress
 
     return {
       ...skill,
@@ -164,6 +172,8 @@ async function saveReport() {
   isSaving.value = true
 
   initializeSkillImprovements()
+  const skillDrafts = selectedSkillDrafts()
+  const trainedSkillNames = skillDrafts.map((skill) => skill.name)
 
   try {
     const report = await createTrainingReport(
@@ -173,13 +183,13 @@ async function saveReport() {
         date: props.slot.date,
         duration: props.slot.duration,
         location: props.slot.finalLocation || 'Не указано',
-        trainedSkills: selectedSkills.value.map((s) => s.name),
+        trainedSkills: trainedSkillNames,
         improved: improved.value.trim(),
         nextFocus: nextFocus.value.trim(),
         skillUpdates: Object.fromEntries(
-          selectedSkills.value.map((skill) => [
+          skillDrafts.map((skill) => [
             skill.id,
-            String(skillProgressDraft.value[skill.id] ?? skill.oldValue),
+            String(skill.progress),
           ]),
         ),
         levelUpdate: levelUpdate.value && levelUpdate.value !== currentStudent.value.level ? levelUpdate.value : undefined,
@@ -194,7 +204,12 @@ async function saveReport() {
       throw new Error('Не удалось сохранить отчет: ученик не найден')
     }
 
-    const savedSkills = await studentsStore.saveStudentSkills(currentStudent.value, buildUpdatedStudentSkills())
+    const backendSkills = await studentsStore.loadStudentSkills(currentStudent.value)
+    const skillsForSave = backendSkills?.length ? backendSkills : currentStudent.value.skills || []
+    const savedSkills = await studentsStore.saveStudentSkills(
+      { ...currentStudent.value, skills: skillsForSave },
+      buildUpdatedStudentSkills(skillsForSave, skillDrafts),
+    )
     if (savedSkills?.length) {
       syncLoadedProfileSkills(savedSkills)
     }
