@@ -32,6 +32,7 @@ const daySlotForm = ref({
   timeEnd: tomorrowAt17.toDate(),
   duration: '60 мин',
 })
+const oneSlotMessage = ref('')
 const daySlotMessage = ref('')
 const bookedSlotId = ref<number | null>(null)
 const visibleSlots = computed(() =>
@@ -111,6 +112,55 @@ function durationMinutes(value: string) {
   return Number.parseInt(value, 10) || 60
 }
 
+function slotInterval(slot: Pick<BookingSlot, 'date' | 'time' | 'duration'>) {
+  const [hours, minutes] = slot.time.split(':').map(Number)
+  const start = dayjs(parseSlotDate(slot.date))
+    .hour(hours || 0)
+    .minute(minutes || 0)
+    .second(0)
+    .millisecond(0)
+  const end = start.add(durationMinutes(slot.duration), 'minute')
+
+  return { start, end }
+}
+
+function intervalOverlaps(
+  first: ReturnType<typeof slotInterval>,
+  second: ReturnType<typeof slotInterval>,
+) {
+  return first.start.isBefore(second.end) && second.start.isBefore(first.end)
+}
+
+function activeSlotsForConflictCheck(excludeSlotId?: number) {
+  return slots.value.filter(
+    (slot) =>
+      slot.id !== excludeSlotId &&
+      (slot.status === 'available' ||
+        slot.status === 'requested' ||
+        slot.status === 'reschedule' ||
+        slot.status === 'confirmed'),
+  )
+}
+
+function formatIntervalTime(interval: ReturnType<typeof slotInterval>) {
+  return `${interval.start.format('HH:mm')}–${interval.end.format('HH:mm')}`
+}
+
+function findSlotConflict(slot: Pick<BookingSlot, 'date' | 'time' | 'duration'>, excludeSlotId?: number) {
+  const nextInterval = slotInterval(slot)
+  const conflictedSlot = activeSlotsForConflictCheck(excludeSlotId).find((item) =>
+    intervalOverlaps(nextInterval, slotInterval(item)),
+  )
+
+  if (!conflictedSlot) {
+    return ''
+  }
+
+  const conflictInterval = slotInterval(conflictedSlot)
+
+  return `Есть пересечение: ${slot.date} ${formatIntervalTime(nextInterval)} пересекается со слотом ${formatIntervalTime(conflictInterval)}.`
+}
+
 function openAddSlot() {
   editingSlotId.value = null
   oneSlotForm.value = {
@@ -118,6 +168,7 @@ function openAddSlot() {
     timeValue: '11:30',
     duration: '90 мин',
   }
+  oneSlotMessage.value = ''
   addOneSlotDialogOpen.value = true
 }
 
@@ -140,10 +191,12 @@ function openEditSlot(slot: BookingSlot) {
     timeValue: slot.time,
     duration: slot.duration,
   }
+  oneSlotMessage.value = ''
   addOneSlotDialogOpen.value = true
 }
 
 async function saveSlot() {
+  oneSlotMessage.value = ''
   const currentSlot = editingSlotId.value ? slots.value.find((slot) => slot.id === editingSlotId.value) : null
   const [hours, minutes] = oneSlotForm.value.timeValue.split(':').map(Number)
   const slotDateTime = dayjs(oneSlotForm.value.dateValue)
@@ -161,6 +214,12 @@ async function saveSlot() {
     time: oneSlotForm.value.timeValue,
     duration: oneSlotForm.value.duration,
     status: currentSlot?.status ?? 'available',
+  }
+
+  const conflictMessage = findSlotConflict(nextSlot, editingSlotId.value ?? undefined)
+  if (conflictMessage) {
+    oneSlotMessage.value = conflictMessage
+    return
   }
 
   if (editingSlotId.value) {
@@ -198,6 +257,15 @@ async function saveDaySlots() {
     }
 
     cursor = cursor.add(stepMinutes, 'minute')
+  }
+
+  const conflictMessage = slotsToCreate
+    .map((slot) => findSlotConflict(slot))
+    .find(Boolean)
+
+  if (conflictMessage) {
+    daySlotMessage.value = conflictMessage
+    return
   }
 
   if (slotsToCreate.length === 0) {
@@ -313,6 +381,7 @@ onMounted(() => {
           Длительность
           <Select v-model="oneSlotForm.duration" :options="durationOptions" />
         </label>
+        <p v-if="oneSlotMessage" class="status-message">{{ oneSlotMessage }}</p>
         <Button icon="pi pi-check" label="Сохранить слот" @click="saveSlot" />
       </div>
     </Dialog>
