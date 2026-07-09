@@ -165,9 +165,7 @@ export const useStudentsStore = defineStore('students', () => {
       }
 
       const response = await updateStudentSkillsApi(student.apiId, payload)
-      const freshPayload = await fetchStudentSkills(student.apiId)
-      const freshSkills = normalizeSkillDefinitions(freshPayload)
-      const savedSkills = freshSkills.length ? freshSkills : normalizeSkillDefinitions(response)
+      const savedSkills = normalizeSkillDefinitions(response)
 
       replaceStudent(student.id, { skills: savedSkills })
       usingFallback.value = false

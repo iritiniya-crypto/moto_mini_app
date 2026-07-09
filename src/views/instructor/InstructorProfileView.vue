@@ -4,7 +4,6 @@ import {storeToRefs} from 'pinia'
 import CompleteTrainingDialog from '@/components/CompleteTrainingDialog.vue'
 import MetricCard from '@/components/MetricCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
-import {useBookingStore} from '@/composables/useBookingStore.ts'
 import {useStudentsStore} from '@/stores/studentsStore.ts'
 import {useUserStore} from '@/stores/userStore.ts'
 import {useTrainingStore} from '@/composables/useTrainingStore.ts'
@@ -36,7 +35,6 @@ type NewStudentListItem = {
 }
 
 const userStore = useUserStore();
-const { loadAllBookingSlots, slots } = useBookingStore()
 const {
   addManualTraining,
   addTrainingVideo,
@@ -133,13 +131,7 @@ const newStudents = computed<NewStudentListItem[]>(() => {
 })
 
 
-const selectedStudentSlots = computed(() =>
-  slots.value.filter(
-    (slot) =>
-      slot.studentId === selectedStudent.value?.id &&
-      ['requested', 'reschedule', 'confirmed', 'completed'].includes(slot.status),
-  ),
-)
+const selectedStudentSlots = computed(() => selectedStudent.value?.upcomingTrainings ?? [])
 const selectedStudentActiveSlots = computed(() =>
   selectedStudentSlots.value
     .filter((slot) => ['requested', 'reschedule', 'confirmed'].includes(slot.status))
@@ -176,7 +168,6 @@ onMounted(() => {
   userStore.loadInstructorProfile()
   userStore.loadSkills()
   studentsStore.loadStudents()
-  loadAllBookingSlots()
 })
 
 async function openStudentCard(nextStudent: Student) {

@@ -27,7 +27,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { completeSlot, loadInstructorCalendar } = useBookingStore()
+const { completeSlot } = useBookingStore()
 const { createTrainingReport } = useTrainingStore()
 const studentsStore = useStudentsStore()
 const userStore = useUserStore()
@@ -204,8 +204,7 @@ async function saveReport() {
       throw new Error('Не удалось сохранить отчет: ученик не найден')
     }
 
-    const backendSkills = await studentsStore.loadStudentSkills(currentStudent.value)
-    const skillsForSave = backendSkills?.length ? backendSkills : currentStudent.value.skills || []
+    const skillsForSave = currentStudent.value.skills?.length ? currentStudent.value.skills : availableSkills.value
     const savedSkills = await studentsStore.saveStudentSkills(
       { ...currentStudent.value, skills: skillsForSave },
       buildUpdatedStudentSkills(skillsForSave, skillDrafts),
@@ -221,8 +220,6 @@ async function saveReport() {
     if (!completedSlot) {
       throw new Error('Не удалось завершить тренировку: слот не найден')
     }
-
-    await loadInstructorCalendar()
 
     emit('update:open', false)
     emit('completed', { skills: savedSkills, trainingPackage: savedPackage })

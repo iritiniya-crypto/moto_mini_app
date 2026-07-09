@@ -261,6 +261,11 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
   const activePackage = (pick<ApiRecord[]>(source, 'packages') ?? [])[0]
   const skills = normalizeSkills(pick(source, 'skills'))
   const history = normalizeHistory(pick(source, 'trainingHistory', 'training_history', 'history'))
+  const upcomingTrainingPayload = pick(source, 'upcomingTrainings', 'upcoming_trainings', 'activeBookingSlots', 'active_booking_slots', 'bookingSlots', 'booking_slots', 'slots')
+  const upcomingTrainings = Array.isArray(upcomingTrainingPayload)
+    ? upcomingTrainingPayload.map((slot, index) => normalizeBookingSlot(slot, index))
+    : []
+  const nextTraining = normalizeOptionalBookingSlot(pick(source, 'nextTraining', 'next_training')) ?? upcomingTrainings[0] ?? fallback?.nextTraining ?? null
   const instructor = pick<ApiRecord>(source, 'instructor')
   const backendHistoryCount = pick(
     source,
@@ -268,8 +273,6 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
     'completed_trainings_count',
     'historyCount',
     'history_count',
-    'totalTrainings',
-    'total_trainings',
   )
   const parsedHistoryCount = Number(backendHistoryCount)
   const completedTrainingsCount = backendHistoryCount !== undefined && Number.isFinite(parsedHistoryCount)
@@ -285,13 +288,15 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
     status: String(pick(source, 'status') ?? fallback?.status ?? 'активный'),
     level: levelFromApi(pick(source, 'level'), fallback?.level),
     completedTrainingsCount,
-    nextLesson: fallback?.nextLesson ?? 'Время еще не выбрано',
+    nextLesson: nextTraining ? [nextTraining.date, nextTraining.time, nextTraining.finalLocation || nextTraining.location].filter(Boolean).join(' · ') : fallback?.nextLesson ?? 'Время еще не выбрано',
     avatar: fallback?.avatar ?? '',
     focus: String(pick(source, 'nextTrainingPlan', 'next_training_plan', 'focus', 'notes') ?? fallback?.focus ?? ''),
     telegramUsername: pick(source, 'telegramUsername', 'telegram_username') ?? pick<ApiRecord>(source, 'user')?.telegramUsername ?? fallback?.telegramUsername,
     trainingPackage: normalizePackage(activePackage) ?? fallback?.trainingPackage,
     skills: skills.length > 0 ? skills : fallback?.skills,
     trainingHistory: history.length > 0 ? history : fallback?.trainingHistory,
+    upcomingTrainings: upcomingTrainings.length > 0 ? upcomingTrainings : fallback?.upcomingTrainings,
+    nextTraining,
     instructor: instructor
       ? {
           id: String(pick(instructor, 'id') ?? fallback?.instructor?.id ?? ''),
@@ -306,12 +311,39 @@ export function normalizeStudent(source: ApiRecord, fallback?: Student): Student
   }
 }
 
+function normalizeOptionalBookingSlot(source: unknown) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return undefined
+  }
+
+  return normalizeBookingSlot(source as ApiRecord)
+}
+
+function normalizeBookingSlotReport(source: unknown): BookingSlot['report'] {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return null
+  }
+
+  const report = source as ApiRecord
+  const trainedSkills = pick<string[]>(report, 'trainedSkills', 'trained_skills')
+  const trainedOn = String(pick(report, 'trainedOn', 'trained_on') ?? '')
+
+  return {
+    trainedSkills: Array.isArray(trainedSkills)
+      ? trainedSkills
+      : trainedOn.split(',').map((item) => item.trim()).filter(Boolean),
+    improved: String(pick(report, 'successes', 'improved') ?? ''),
+    nextFocus: String(pick(report, 'focusNext', 'focus_next', 'nextFocus', 'next_focus') ?? ''),
+  }
+}
+
 export function normalizeBookingSlot(source: ApiRecord, index = 0): BookingSlot {
   const student = pick<ApiRecord>(source, 'student')
   const requestedBy = pick<ApiRecord>(source, 'requestedBy', 'requested_by')
   const rawStudentId = pick(source, 'studentId', 'student_id') as string ?? pick(student, 'id') as string
   const previousStartsAt = pick(source, 'previousStartsAt', 'previous_starts_at')
   const previousDuration = pick(source, 'previousDurationMinutes', 'previous_duration_minutes')
+  const studentPackage = pick<ApiRecord>(student, 'activePackage', 'package') ?? (pick<ApiRecord[]>(student, 'packages') ?? [])[0]
 
   return {
     id: numericId(pick(source, 'id'), index + 1),
@@ -331,11 +363,14 @@ export function normalizeBookingSlot(source: ApiRecord, index = 0): BookingSlot 
     studentId: rawStudentId,
     studentApiId: typeof rawStudentId === 'string' ? rawStudentId : undefined,
     studentName: pick(student, 'name') ?? pick(requestedBy, 'displayName', 'display_name'),
+    studentAvatar: pick(student, 'avatar'),
+    studentPackage: normalizePackage(studentPackage),
     preference: pick(source, 'preference') ?? pick(source, 'title', 'location'),
     studentComment: pick(source, 'studentComment', 'student_comment', 'notes'),
     finalLocation: pick(source, 'finalLocation', 'final_location', 'location', 'title'),
     finalLocationUrl: pick(source, 'finalLocationUrl', 'final_location_url', 'locationUrl', 'location_url'),
     instructorComment: pick(source, 'notes'),
+    report: normalizeBookingSlotReport(pick(source, 'report')),
     status: pick(source, 'status') ?? 'available',
   }
 }

@@ -105,19 +105,6 @@ function normalizeSlotsFromResponse(payload: unknown) {
     })
 }
 
-function mergeSlotLists(baseSlots: BookingSlot[], overrideSlots: BookingSlot[]) {
-  const merged = new Map<string, BookingSlot>()
-  const keyForSlot = (slot: BookingSlot) => slot.apiId || String(slot.id)
-
-  baseSlots.forEach((slot) => merged.set(keyForSlot(slot), slot))
-  overrideSlots.forEach((slot) => {
-    const key = keyForSlot(slot)
-    merged.set(key, { ...merged.get(key), ...slot })
-  })
-
-  return Array.from(merged.values())
-}
-
 export function useBookingStore() {
   const activeStudentSlot = computed(() => slots.value.find((slot) => slot.id === activeStudentSlotId.value))
   const bookingManagementSlots = computed(() =>
@@ -451,14 +438,7 @@ export function useBookingStore() {
 
     try {
       const calendarPayload = await fetchInstructorCalendar()
-      const calendarSlots = normalizeBookingSlots(calendarPayload)
-
-      try {
-        const bookingPayload = await fetchAllBookingSlots()
-        slots.value = mergeSlotLists(normalizeBookingSlots(bookingPayload), calendarSlots)
-      } catch {
-        slots.value = calendarSlots
-      }
+      slots.value = normalizeBookingSlots(calendarPayload)
     } catch {
       bookingError.value = 'Backend calendar недоступен, данные не обновлены.'
     } finally {

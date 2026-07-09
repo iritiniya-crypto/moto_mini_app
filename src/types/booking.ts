@@ -1,4 +1,5 @@
 import type {StudentLevel} from './student'
+import type {TrainingPackage} from './package'
 import type {ApiTrainingHistory, ApiTrainingReport} from './training'
 import type {UserRole} from './user'
 
@@ -60,13 +61,20 @@ export type BookingSlot = {
   title?: string
   location?: string
   studentName?: string
+  studentAvatar?: string
   studentId?: string
   studentApiId?: string
+  studentPackage?: TrainingPackage
   preference?: string
   studentComment?: string
   finalLocation?: string
   finalLocationUrl?: string
   instructorComment?: string
+  report?: {
+    trainedSkills: string[]
+    improved: string
+    nextFocus: string
+  } | null
   status: BookingSlotStatus
 }
 

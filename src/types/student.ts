@@ -2,6 +2,7 @@ import type {Skill, StudentSkill} from './skill'
 import type {ApiTrainingHistory, TrainingHistory, TrainingVideo} from './training'
 import type {ApiTrainingPackage, TrainingPackage} from './package'
 import type {User} from './user'
+import type {ApiBookingSlot, BookingSlot} from './booking'
 
 export type StudentLevel = 'BEGINNER' | 'BASIC' | 'INTERMEDIATE' | 'ADVANCED'
 
@@ -21,7 +22,8 @@ export interface ApiStudent {
   skills: StudentSkill[]
   historyCount?: number
   completedTrainingsCount?: number
-  totalTrainings?: number
+  upcomingTrainings?: ApiBookingSlot[]
+  nextTraining?: ApiBookingSlot | null
 }
 
 export interface ApiStudentProfile extends ApiStudent {
@@ -53,6 +55,8 @@ export type Student = {
   focus: string
   skills?: Skill[]
   trainingHistory?: TrainingHistory[]
+  upcomingTrainings?: BookingSlot[]
+  nextTraining?: BookingSlot | null
   telegramUsername?: string
   trainingPackage?: TrainingPackage
   instructor?: StudentInstructor

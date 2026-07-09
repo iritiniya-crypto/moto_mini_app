@@ -136,11 +136,8 @@ describe('studentsStore', () => {
     expect(store.students[0].skills?.[0].oldValue).toBe(30)
   })
 
-  it('refreshes skills from backend after successful save', async () => {
+  it('stores skills returned by backend after successful save', async () => {
     vi.mocked(updateStudentSkillsApi).mockResolvedValueOnce([
-      { id: 1, apiId: 'skill-1', name: 'Овал', oldValue: 80 },
-    ] as any)
-    vi.mocked(fetchStudentSkills).mockResolvedValueOnce([
       { id: 1, apiId: 'skill-1', name: 'Овал', oldValue: 80 },
       { id: 2, apiId: 'skill-2', name: 'Змейка', oldValue: 55 },
     ] as any)
@@ -160,7 +157,7 @@ describe('studentsStore', () => {
     expect(updateStudentSkillsApi).toHaveBeenCalledWith('student-api-1', [
       { id: 1, apiId: 'skill-1', name: 'Овал', oldValue: 80 },
     ])
-    expect(fetchStudentSkills).toHaveBeenCalledWith('student-api-1')
+    expect(fetchStudentSkills).not.toHaveBeenCalled()
     expect(result).toHaveLength(2)
     expect(store.students[0].skills?.[0].oldValue).toBe(80)
   })

@@ -1,35 +1,24 @@
 <script lang="ts" setup>
 import {computed, onMounted, ref} from 'vue'
-import {storeToRefs} from 'pinia'
 import CompleteTrainingDialog from '@/components/CompleteTrainingDialog.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import {useBookingStore} from '@/composables/useBookingStore.ts'
-import {useTrainingStore} from '@/composables/useTrainingStore.ts'
 import {standardLocations} from '@/constants/locations.ts'
-import {useStudentsStore} from '@/stores/studentsStore'
 import type {BookingSlot} from '@/types/booking'
-import type {TrainingHistory} from '@/types/training'
 import {useUserStore} from "@/stores/userStore.ts";
-import {packageNameForStudent} from '@/utils/trainingPackageName'
 
 const userStore = useUserStore()
-const studentsStore = useStudentsStore()
-const {students} = storeToRefs(studentsStore)
 const { confirmSlot, declineSlot, loadInstructorCalendar, requestedSlots, rescheduleSlots, slots } = useBookingStore()
-const { getStudentTrainingHistory, trainingReports } = useTrainingStore()
 type CalendarFilter = 'all' | 'available' | 'requested' | 'reschedule' | 'confirmed' | 'completed'
 type CalendarTraining = BookingSlot & {
   student: string
   statusText: string
   statusSeverity: 'success' | 'warn' | 'secondary'
-  history: TrainingHistory | null
-  report: typeof trainingReports.value[number] | null
 }
 
 const calendarOpen = ref(false)
 const calendarFilter = ref<CalendarFilter>('confirmed')
 const selectedReportTraining = ref<CalendarTraining | null>(null)
-const trainingHistoryBySlotId = ref<Record<number, TrainingHistory>>({})
 const calendarFilters: { label: string; value: CalendarFilter }[] = [
   { label: 'Все', value: 'all' },
   { label: 'Свободно', value: 'available' },
@@ -61,29 +50,18 @@ function studentName(slot: BookingSlot) {
   return slot.studentName  || 'Ученик'
 }
 
-function studentForSlot(slot: BookingSlot) {
-  return students.value.find((student) =>
-    student.id === slot.studentId ||
-    student.apiId === slot.studentId ||
-    student.id === slot.studentApiId ||
-    student.apiId === slot.studentApiId,
-  )
-}
-
 function studentAvatarForSlot(slot: BookingSlot) {
-  const student = studentForSlot(slot)
-  return student?.avatar || 'student-avatar.png'
+  return slot.studentAvatar || 'student-avatar.png'
 }
 
 function packageTextForSlot(slot: BookingSlot) {
-  const student = studentForSlot(slot)
-  const trainingPackage = student?.trainingPackage
+  const trainingPackage = slot.studentPackage
 
-  if (!student || !trainingPackage) {
+  if (!trainingPackage) {
     return ''
   }
 
-  return `Пакет "${packageNameForStudent(student)}" ${trainingPackage.completed}/${trainingPackage.total}`
+  return `Пакет "${trainingPackage.name || 'Без названия'}" ${trainingPackage.completed}/${trainingPackage.total}`
 }
 
 function parseSlotDateTime(slot: Pick<BookingSlot, 'date' | 'time'>) {
@@ -129,40 +107,6 @@ function statusSeverity(status: BookingSlot['status']): 'success' | 'warn' | 'se
   return 'secondary'
 }
 
-function historyForSlot(slot: BookingSlot) {
-  return trainingHistoryBySlotId.value[slot.id] || null
-}
-
-function reportForSlot(slot: BookingSlot) {
-  return trainingReports.value.find((report) => report.slotId === slot.id) || null
-}
-
-async function loadCalendarHistories() {
-  const completedSlots = slots.value.filter((slot) => slot.status === 'completed' && Boolean(slot.studentId))
-
-  if (completedSlots.length === 0) {
-    trainingHistoryBySlotId.value = {}
-    return
-  }
-
-  const historiesBySlotId: Record<number, TrainingHistory> = {}
-  const uniqueStudentIds = [...new Set(completedSlots.map((slot) => slot.studentId))]
-
-  await Promise.all(
-    uniqueStudentIds.map(async (studentId) => {
-      const studentHistory = await getStudentTrainingHistory(studentId || '')
-
-      studentHistory.forEach((history) => {
-        if (typeof history.slotId === 'number') {
-          historiesBySlotId[history.slotId] = history
-        }
-      })
-    }),
-  )
-
-  trainingHistoryBySlotId.value = historiesBySlotId
-}
-
 const requests = computed(() =>
   requestedSlots.value.map((slot) => {
     return { ...slot, student: studentName(slot), packageText: packageTextForSlot(slot), avatar: studentAvatarForSlot(slot) }
@@ -199,8 +143,6 @@ const calendarTrainings = computed<CalendarTraining[]>(() =>
       student: slot.status === 'available' ? 'Свободное окно' : studentName(slot),
       statusText: statusText(slot.status),
       statusSeverity: statusSeverity(slot.status),
-      history: historyForSlot(slot),
-      report: reportForSlot(slot),
     }))
     .sort((a, b) => parseSlotDateTime(a).getTime() - parseSlotDateTime(b).getTime()),
 )
@@ -284,7 +226,6 @@ async function confirmRequest() {
   const instructorComment = finalLocationForm.value.instructorComment
   await confirmSlot(request.id, finalLocation, finalLocationUrl, instructorComment)
   await loadInstructorCalendar()
-  await loadCalendarHistories()
   confirmedRequest.value = {
     ...request,
     status: 'confirmed',
@@ -298,7 +239,6 @@ async function confirmRequest() {
 async function declineRequest(request: BookingSlot & { student: string }) {
   await declineSlot(request.id)
   await loadInstructorCalendar()
-  await loadCalendarHistories()
 }
 
 function openCompleteTrainingDialog(training: BookingSlot & { student: string }) {
@@ -318,7 +258,7 @@ async function handleTrainingCompleted() {
 
   completeTrainingDialogOpen.value = false
   trainingToComplete.value = null
-  await studentsStore.loadStudents()
+  await loadInstructorCalendar()
 }
 
 function openLocation(url: string) {
@@ -327,8 +267,6 @@ function openLocation(url: string) {
 
 onMounted(async () => {
   await loadInstructorCalendar()
-  await studentsStore.loadStudents()
-  await loadCalendarHistories()
 })
 
 </script>
@@ -516,7 +454,7 @@ onMounted(async () => {
                 </div>
 
                 <div v-else class="calendar-training-details">
-                  <span>Что тренировали: {{ training.history?.topics.join(', ') || training.report?.trainedSkills.join(', ') || 'Не указано' }}</span>
+                  <span>Что тренировали: {{ training.report?.trainedSkills.join(', ') || 'Не указано' }}</span>
                 </div>
 
                 <div v-if="training.status === 'requested' || training.status === 'reschedule'" class="slot-actions">
@@ -567,30 +505,18 @@ onMounted(async () => {
           <strong>{{ selectedReportTraining.date }} · {{ selectedReportTraining.time }} · {{ durationText(selectedReportTraining.duration) }}</strong>
           <span>
             Что тренировали:
-            {{ selectedReportTraining.history?.topics.join(', ') || selectedReportTraining.report?.trainedSkills.join(', ') || 'Не указано' }}
+            {{ selectedReportTraining.report?.trainedSkills.join(', ') || 'Не указано' }}
           </span>
         </div>
 
         <div class="note-list">
           <div>
             <span>Что получилось</span>
-            <strong>{{ selectedReportTraining.history?.improved || selectedReportTraining.report?.improved || 'Не заполнено' }}</strong>
+            <strong>{{ selectedReportTraining.report?.improved || 'Не заполнено' }}</strong>
           </div>
           <div>
             <span>На что обратить внимание</span>
-            <strong>{{ selectedReportTraining.history?.nextFocus || selectedReportTraining.report?.nextFocus || 'Не заполнено' }}</strong>
-          </div>
-          <div v-if="selectedReportTraining.history?.videoUrl">
-            <span>Видео</span>
-            <a
-              :href="selectedReportTraining.history.videoUrl"
-              class="location-link primary"
-              rel="noreferrer"
-              style="margin-top: 8px;"
-              target="_blank"
-            >
-              Открыть видео в Telegram
-            </a>
+            <strong>{{ selectedReportTraining.report?.nextFocus || 'Не заполнено' }}</strong>
           </div>
         </div>
       </div>
