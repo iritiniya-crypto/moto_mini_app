@@ -112,6 +112,7 @@ export interface RescheduleBookingSlotRequest {
   targetSlotId: string
   startsAt: string
   durationMinutes: number
+  studentComment?: string
 }
 
 export interface CancelBookingSlotRequest {

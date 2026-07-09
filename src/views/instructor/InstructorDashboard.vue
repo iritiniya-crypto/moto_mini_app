@@ -362,18 +362,23 @@ onMounted(async () => {
       <div class="stack tight">
         <Card v-for="move in reschedules" :key="move.id" class="request-card">
           <template #content>
-            <div class="request-top">
-              <Avatar class="student-request-avatar" :image="move.avatar" shape="circle" size="large" />
-              <div>
-                <h3>{{ move.student }}</h3>
-                <span>{{ rescheduleTimeText(move) }} · {{ durationText(move.duration) }}</span>
-                <small v-if="move.studentComment">Комментарий: "{{ move.studentComment }}"</small>
+            <div class="booking-request-content">
+              <div class="booking-request-top">
+                <div class="booking-request-avatar-cell">
+                  <Avatar class="student-request-avatar" :image="move.avatar" shape="circle" size="large" />
+                </div>
+                <div class="booking-request-details">
+                  <h3>{{ move.student }}</h3>
+                  <strong class="booking-request-time">{{ rescheduleTimeText(move) }}</strong>
+                  <p>{{ durationText(move.duration) }}</p>
+                  <p v-if="move.studentComment"><b>Комментарий:</b> "{{ move.studentComment }}"</p>
+                </div>
               </div>
               <Tag severity="warn" value="Запрос на перенос" />
-            </div>
-            <div class="slot-actions">
-              <Button icon="pi pi-check" label="Подтвердить перенос" security="primary" size="small" @click="openConfirmRequest(move)" />
-              <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(move)" />
+              <div class="slot-actions">
+                <Button icon="pi pi-check" label="Подтвердить перенос" security="primary" size="small" @click="openConfirmRequest(move)" />
+                <Button icon="pi pi-times" label="Отклонить" severity="secondary" size="small" @click="declineRequest(move)" />
+              </div>
             </div>
           </template>
         </Card>

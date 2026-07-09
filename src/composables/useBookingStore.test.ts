@@ -115,6 +115,7 @@ describe('useBookingStore', () => {
       targetSlotId: 'slot-202',
       startsAt: expect.any(String),
       durationMinutes: 90,
+      studentComment: undefined,
     })
   })
 

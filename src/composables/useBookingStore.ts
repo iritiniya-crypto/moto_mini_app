@@ -338,6 +338,7 @@ export function useBookingStore() {
       const response = await rescheduleBookingSlot(slot.apiId, {
         targetSlotId: targetSlot.apiId,
         ...slotToCreatePayload(targetSlot),
+        studentComment,
       })
       return upsertSlotsFromResponse(response, { ...slot, ...patch })
     } catch {
