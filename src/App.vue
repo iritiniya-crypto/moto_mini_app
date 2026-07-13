@@ -35,6 +35,7 @@ const { activeRole } = storeToRefs(authStore)
 const activeTab = ref<Tab>('home')
 const isInitializing = ref(true)
 const initError = ref<string | null>(null)
+const initData = ref('')
 
 // Helper to get Telegram WebApp
 function getTelegramWebApp() {
@@ -76,12 +77,12 @@ onMounted(async () => {
     }
 
     // Get Telegram initData
-    const initData = await getTelegramInitData()
+    initData.value = await getTelegramInitData()
     console.log('🔐 Authenticating...')
     if (!initData) {
       throw new Error('Telegram initData is empty')
     }
-    const parsedInitData = authStore.parseInitData(initData)
+    const parsedInitData = authStore.parseInitData(initData.value)
      if (parsedInitData.user.username === NIKITA_TG_NAME) {
        authStore.activeRole = 'instructor'
      }
@@ -91,7 +92,7 @@ onMounted(async () => {
      }
 
     // Authenticate with Telegram
-    await authStore.loginWithTelegram(initData)
+    await authStore.loginWithTelegram(initData.value)
     console.log('✅ Authentication successful')
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Authentication failed'
@@ -135,6 +136,7 @@ function retryAuth() {
 
 <template>
   <div v-if="isInitializing" class="loading-container">
+    {{ initData }}
     <div>
       <p>Инициализация...</p>
       <small style="color: #666; margin-top: 10px;">Подключение к Telegram...</small>
