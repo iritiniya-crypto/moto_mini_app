@@ -26,6 +26,8 @@ const instructorTabs: Array<{ id: Tab; label: string; icon: string }> = [
       <div>
         <strong>Мото-дневник</strong>
         {{ authStore.activeRole }}
+        {{ authStore.rootIds }}
+        {{ authStore.initDataText }}
       </div>
 
       <div class="role-switch" aria-label="Переключатель ролей" v-if="authStore.isRoot">
