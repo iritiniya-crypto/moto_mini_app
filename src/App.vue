@@ -136,13 +136,13 @@ function retryAuth() {
 
 <template>
   <div v-if="isInitializing" class="loading-container">
-    {{ initData }}
     <div>
       <p>Инициализация...</p>
       <small style="color: #666; margin-top: 10px;">Подключение к Telegram...</small>
     </div>
   </div>
   <div v-else-if="initError" class="error-container">
+    {{ initData }}
     <div>
       <p>❌ Ошибка авторизации:</p>
       <p style="margin-top: 10px; font-size: 14px;">{{ initError }}</p>
