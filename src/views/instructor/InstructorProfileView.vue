@@ -163,11 +163,11 @@ const isVideoUrlValid = computed(() => {
   }
 })
 
-onMounted(() => {
-  userStore.checkHealth()
-  userStore.loadInstructorProfile()
-  userStore.loadSkills()
-  studentsStore.loadStudents()
+onMounted(async () => {
+  await userStore.checkHealth()
+  await userStore.loadInstructorProfile()
+  await userStore.loadSkills()
+  await studentsStore.loadStudents()
 })
 
 async function openStudentCard(nextStudent: Student) {

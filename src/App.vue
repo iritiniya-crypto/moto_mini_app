@@ -89,7 +89,7 @@ onMounted(async () => {
      }
 
      if (String(ROOT_IDS).split(',').includes(initDataUser.id.toString())) {
-       authStore.activeRole = 'root'
+       authStore.isRoot = true
      }
 
     // Authenticate with Telegram

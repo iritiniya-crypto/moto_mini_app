@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null)
   const activeRole = ref<'student' | 'instructor' | 'root'>('student')
   const isInstructor = computed(() => activeRole.value === 'instructor')
-  const isRoot = computed(() => activeRole.value === 'root')
+  const isRoot = ref(false)
 
   const isAuthenticated = computed(() => !!token.value && !!studentId.value)
 
