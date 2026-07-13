@@ -82,12 +82,12 @@ onMounted(async () => {
     if (!initData) {
       throw new Error('Telegram initData is empty')
     }
-    const parsedInitData = authStore.parseInitData(initData.value)
-     if (parsedInitData.user.username === NIKITA_TG_NAME) {
+    const initDataUser = authStore.parseInitData(initData.value)
+     if (initDataUser.username === NIKITA_TG_NAME) {
        authStore.activeRole = 'instructor'
      }
 
-     if ([ROOT_IDS].includes(parsedInitData.user.id.toString())) {
+     if ([ROOT_IDS].includes(initDataUser.id.toString())) {
        authStore.activeRole = 'root'
      }
 
@@ -142,7 +142,6 @@ function retryAuth() {
     </div>
   </div>
   <div v-else-if="initError" class="error-container">
-    {{ initData }}
     <div>
       <p>❌ Ошибка авторизации:</p>
       <p style="margin-top: 10px; font-size: 14px;">{{ initError }}</p>

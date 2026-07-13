@@ -2,17 +2,14 @@ import type {BookingSlotStatus} from './booking'
 import type {StudentLevel} from './student'
 import type {TrainingPackagePaymentStatus} from './package'
 
-export interface TGInitData {
-    query_id: string
-    user: {
-        id: number
-        first_name: string
-        last_name?: string
-        username?: string
-        language_code?: string
-    }
-    auth_date: number
-    hash: string
+export interface TelegramUser {
+  id: number;
+  is_bot: boolean;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  language_code?: string;
+  photo_url?: string;
 }
 
 export interface ApiHealthResponse {

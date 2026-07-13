@@ -1,10 +1,10 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { authenticateWithTelegram, type AuthResponse } from '@/api/auth'
-import { setAuthToken } from '@/api/client'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
+import {authenticateWithTelegram, type AuthResponse} from '@/api/auth'
+import {setAuthToken} from '@/api/client'
 import {useUserStore} from "@/stores/userStore.ts";
 import {normalizeStudent} from "@/api/normalizers.ts";
-import type {TGInitData} from "@/types";
+import type {TelegramUser} from "@/types";
 
 const STORAGE_KEY = 'auth_token'
 const STUDENT_ID_KEY = 'student_id'
@@ -55,8 +55,12 @@ export const useAuthStore = defineStore('auth', () => {
     setAuthToken(null)
   }
 
-  function parseInitData(initData: string): TGInitData {
-    return JSON.parse(initData)
+  function parseInitData(initData: string): TelegramUser {
+    // Parse init data (format: key=value&key=value&...)
+    const params = new URLSearchParams(initData);
+    const userStr = params.get('user') as string;
+
+    return JSON.parse(userStr) as TelegramUser;
   }
 
   async function loginWithTelegram(initData: string) {
