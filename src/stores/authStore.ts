@@ -4,6 +4,7 @@ import { authenticateWithTelegram, type AuthResponse } from '@/api/auth'
 import { setAuthToken } from '@/api/client'
 import {useUserStore} from "@/stores/userStore.ts";
 import {normalizeStudent} from "@/api/normalizers.ts";
+import type {TGInitData} from "@/types";
 
 const STORAGE_KEY = 'auth_token'
 const STUDENT_ID_KEY = 'student_id'
@@ -16,6 +17,10 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthResponse['user'] | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const activeRole = ref<'student' | 'instructor' | 'root'>('student')
+
+  const isInstructor = computed(() => activeRole.value === 'instructor')
+  const isRoot = computed(() => activeRole.value === 'root')
 
   const isAuthenticated = computed(() => !!token.value && !!studentId.value)
 
@@ -48,6 +53,10 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(STUDENT_ID_KEY)
     localStorage.removeItem(AVATAR_KEY)
     setAuthToken(null)
+  }
+
+  function parseInitData(initData: string): TGInitData {
+    return JSON.parse(initData)
   }
 
   async function loginWithTelegram(initData: string) {
@@ -87,10 +96,14 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     error,
     isAuthenticated,
+    isInstructor,
+    isRoot,
     setToken,
     setStudentId,
     setAvatar,
     clearAuth,
-    loginWithTelegram
+    loginWithTelegram,
+    parseInitData,
+    activeRole
   }
 })

@@ -9,8 +9,11 @@ import StudentDashboard from './views/student/StudentDashboard.vue'
 import VideosView from './views/VideosView.vue'
 import InstructorProfileView from "./views/instructor/InstructorProfileView.vue";
 import { useAuthStore } from './stores/authStore'
+import {storeToRefs} from "pinia";
 
-type Role = 'student' | 'instructor'
+const ROOT_IDS = import.meta.env.VITE_APP_ROOT_IDS
+const NIKITA_TG_NAME = import.meta.env.VITE_APP_NIKITA_INSTRUCTOR_NAME
+
 type Tab = 'home' | 'lessons' | 'videos' | 'profile'
 
 // Declare Telegram WebApp type
@@ -28,7 +31,7 @@ declare global {
 }
 
 const authStore = useAuthStore()
-const activeRole = ref<Role>('student')
+const { activeRole } = storeToRefs(authStore)
 const activeTab = ref<Tab>('home')
 const isInitializing = ref(true)
 const initError = ref<string | null>(null)
@@ -75,6 +78,17 @@ onMounted(async () => {
     // Get Telegram initData
     const initData = await getTelegramInitData()
     console.log('🔐 Authenticating...')
+    if (!initData) {
+      throw new Error('Telegram initData is empty')
+    }
+    const parsedInitData = authStore.parseInitData(initData)
+     if (parsedInitData.user.username === NIKITA_TG_NAME) {
+       authStore.activeRole = 'instructor'
+     }
+
+     if ([ROOT_IDS].includes(parsedInitData.user.id.toString())) {
+       authStore.activeRole = 'root'
+     }
 
     // Authenticate with Telegram
     await authStore.loginWithTelegram(initData)
