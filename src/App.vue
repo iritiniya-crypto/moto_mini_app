@@ -83,6 +83,9 @@ onMounted(async () => {
       throw new Error('Telegram initData is empty')
     }
     const initDataUser = authStore.parseInitData(initData.value)
+    authStore.initDataText = initData.value
+    authStore.rootIds = [ROOT_IDS, 'включает: ' + [ROOT_IDS].includes(initDataUser.id.toString())]
+
      if (initDataUser.username === NIKITA_TG_NAME) {
        authStore.activeRole = 'instructor'
      }
