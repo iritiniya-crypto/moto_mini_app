@@ -26,11 +26,11 @@ const pinia = createPinia()
 
 app.use(PrimeVue, {
   theme: {
-    preset: Aura
-  },
-  options: {
-    darkModeSelector: '.dark-mode',
-    cssLayer: true,
+    preset: Aura,
+    options: {
+      darkModeSelector: '.p-dark',
+      cssLayer: true,
+    }
   },
 });
 
