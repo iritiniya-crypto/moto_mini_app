@@ -1,9 +1,10 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { authenticateWithTelegram, type AuthResponse } from '@/api/auth'
-import { setAuthToken } from '@/api/client'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
+import {authenticateWithTelegram, type AuthResponse} from '@/api/auth'
+import {setAuthToken} from '@/api/client'
 import {useUserStore} from "@/stores/userStore.ts";
 import {normalizeStudent} from "@/api/normalizers.ts";
+import type {TelegramUser} from "@/types";
 
 const STORAGE_KEY = 'auth_token'
 const STUDENT_ID_KEY = 'student_id'
@@ -16,6 +17,9 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthResponse['user'] | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const activeRole = ref<'student' | 'instructor' | 'root'>('student')
+  const isInstructor = computed(() => activeRole.value === 'instructor')
+  const isRoot = ref(false)
 
   const isAuthenticated = computed(() => !!token.value && !!studentId.value)
 
@@ -48,6 +52,14 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(STUDENT_ID_KEY)
     localStorage.removeItem(AVATAR_KEY)
     setAuthToken(null)
+  }
+
+  function parseInitData(initData: string): TelegramUser {
+    // Parse init data (format: key=value&key=value&...)
+    const params = new URLSearchParams(initData);
+    const userStr = params.get('user') as string;
+
+    return JSON.parse(userStr) as TelegramUser;
   }
 
   async function loginWithTelegram(initData: string) {
@@ -87,10 +99,14 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     error,
     isAuthenticated,
+    isInstructor,
+    isRoot,
     setToken,
     setStudentId,
     setAvatar,
     clearAuth,
-    loginWithTelegram
+    loginWithTelegram,
+    parseInitData,
+    activeRole,
   }
 })

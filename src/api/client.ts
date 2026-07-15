@@ -6,10 +6,6 @@ export const API_BASE_URL =
 export const TEST_USER_ID = import.meta.env.VITE_APP_TEST_USER_ID as string
 export const TEST_INSTRUCTOR_ID = import.meta.env.VITE_APP_TEST_INSTRUCTOR_ID as string
 
-console.log(API_BASE_URL)
-console.log(TEST_USER_ID)
-console.log(TEST_INSTRUCTOR_ID)
-
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 6000,

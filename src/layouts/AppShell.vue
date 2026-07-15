@@ -1,9 +1,10 @@
 <script setup lang="ts">
-type Role = 'student' | 'instructor'
+import {useAuthStore} from "@/stores/authStore.ts";
+
 type Tab = 'home' | 'lessons' | 'videos' | 'profile'
 
-const role = defineModel<Role>('role', { required: true })
 const tab = defineModel<Tab>('tab', { required: true })
+const authStore = useAuthStore()
 
 const studentTabs: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'home', label: 'Главная', icon: 'pi pi-home' },
@@ -26,11 +27,11 @@ const instructorTabs: Array<{ id: Tab; label: string; icon: string }> = [
         <strong>Мото-дневник</strong>
       </div>
 
-      <div class="role-switch" aria-label="Переключатель ролей">
-        <button :class="{ active: role === 'student' }" type="button" @click="role = 'student'">
+      <div class="role-switch" aria-label="Переключатель ролей" v-if="authStore.isRoot">
+        <button :class="{ active: authStore.activeRole === 'student' }" type="button" @click="authStore.activeRole = 'student'">
           Ученик
         </button>
-        <button :class="{ active: role === 'instructor' }" type="button" @click="role = 'instructor'">
+        <button :class="{ active: authStore.isInstructor }" type="button" @click="authStore.activeRole = 'instructor'">
           Инструктор
         </button>
       </div>
@@ -40,9 +41,9 @@ const instructorTabs: Array<{ id: Tab; label: string; icon: string }> = [
       <slot />
     </main>
 
-    <nav :class="['bottom-nav', { 'instructor-nav': role === 'instructor' }]" aria-label="Основная навигация">
+    <nav :class="['bottom-nav', { 'instructor-nav': authStore.activeRole === 'instructor' }]" aria-label="Основная навигация">
       <button
-        v-for="item in role === 'student' ? studentTabs : instructorTabs"
+        v-for="item in authStore.activeRole === 'student' ? studentTabs : instructorTabs"
         :key="item.id"
         :class="{ active: tab === item.id }"
         type="button"
